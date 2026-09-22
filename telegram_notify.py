@@ -1,6 +1,7 @@
 """
-telegram_notify.py — posts an alert to your Telegram channel for every
-plot that scraper.py just found newly reserved (diff_new_reservations.json).
+telegram_notify.py — posts a branded alert to your Telegram channel for
+every plot that scraper.py just found newly reserved
+(diff_new_reservations.json).
 
 Required environment variables (set as GitHub Secrets — see README.md):
   TELEGRAM_BOT_TOKEN   the bot token from @BotFather
@@ -20,20 +21,50 @@ import requests
 DIFF_FILE = "diff_new_reservations.json"
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
+# --- Personalize these two -------------------------------------------------
+SITE_URL = "https://YOUR-DOMAIN-HERE"  # TODO: put your live site link once deployed
+AGENT_NAME = "أحمد جاب الله"
+AGENT_PHONE_DISPLAY = "01009566779"
+# -----------------------------------------------------------------------------
 
-def build_message(key):
-    """key looks like: '<city>|<project>|<block>|<plot>'"""
-    parts = key.split("|")
-    if len(parts) != 4:
-        return f"قطعة اتحجزت (تفاصيل ناقصة): {key}"
-    city, project, block, plot = parts
+FEATURE_EMOJI = {"corner": "🔺 ناصية", "garden": "🌳 حديقة", "view": "🌊 إطلالة"}
+
+
+def fmt_money(raw):
+    """'25,188.48' -> '$25,188' (drop cents, keep thousands separator)."""
+    try:
+        n = float(str(raw).replace(",", "").strip() or 0)
+        return f"${n:,.0f}"
+    except ValueError:
+        return f"${raw}"
+
+
+def fmt_area(raw):
+    try:
+        n = float(str(raw).replace(",", "").strip() or 0)
+        return f"{n:,.0f} م²"
+    except ValueError:
+        return f"{raw} م²"
+
+
+def build_message(item, today_total, updated_at):
+    features = [label for key, label in FEATURE_EMOJI.items() if item.get(key)]
+    features_line = f"✨ {' · '.join(features)}\n" if features else ""
+
     return (
-        "🔴 قطعة جديدة اتحجزت — المرحلة 11\n\n"
-        f"📍 المدينة: {city}\n"
-        f"🏗 المشروع: {project}\n"
-        f"🧱 المربع: {block}\n"
-        f"📌 رقم القطعة: {plot}\n\n"
-        "تابع باقي القطع المتاحة على موقعك."
+        "🏝️ قطعة جديدة اتحجزت — المرحلة 11\n\n"
+        f"📍 {item['city']}\n"
+        f"🏗️ {item['project']}\n"
+        f"🧱 المربع: {item['block']}   |   🔢 القطعة: {item['plot']}\n"
+        f"📐 المساحة: {fmt_area(item['area'])}\n"
+        f"{features_line}"
+        f"💰 المقدم: {fmt_money(item['down'])}\n\n"
+        f"📊 إجمالي القطع اللي اتحجزت النهاردة: {today_total}\n"
+        f"🕓 {updated_at}\n"
+        "━━━━━━━━━━━━━━━\n"
+        "عايز تشوف قطعة تناسب ميزانيتك من الباقي؟\n"
+        f"🌐 {SITE_URL}\n"
+        f"📲 {AGENT_NAME} — {AGENT_PHONE_DISPLAY}"
     )
 
 
@@ -60,14 +91,18 @@ def main():
         print(f"[telegram] {DIFF_FILE} not found — did scraper.py run first?")
         return
 
-    new_keys = json.loads(p.read_text(encoding="utf-8"))
-    if not new_keys:
+    data = json.loads(p.read_text(encoding="utf-8"))
+    items = data.get("items", [])
+    today_total = data.get("today_total", "?")
+    updated_at = data.get("updatedAt", "")
+
+    if not items:
         print("[telegram] no new reservations this run — nothing to send")
         return
 
-    print(f"[telegram] sending {len(new_keys)} notification(s)")
-    for key in new_keys:
-        send(token, chat_id, build_message(key))
+    print(f"[telegram] sending {len(items)} notification(s)")
+    for item in items:
+        send(token, chat_id, build_message(item, today_total, updated_at))
         time.sleep(1)  # stay well under Telegram's rate limits
 
 
