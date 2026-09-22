@@ -4,7 +4,7 @@ name: Sync Phase 11 plot status
 # to test it before trusting the schedule.
 on:
   schedule:
-    - cron: "*/5 * * * *"   # every 5 minutes — see README.md before lowering this further
+    - cron: "0 * * * *"   # TEMP: every hour, just to measure real full-run duration — see README.md
   workflow_dispatch: {}      # adds a "Run workflow" button in the GitHub UI
 
 # If a run is still going when the next one is scheduled, cancel the OLD one
