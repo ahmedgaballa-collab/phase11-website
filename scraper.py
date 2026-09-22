@@ -226,17 +226,23 @@ def discover_zones(sess, cities=None, log=print):
         for i, a in enumerate(proj_anchors):
             want_debug = (not first_city_debug_done) and i < 6
             container = find_project_container(a)
-            if container is None:
-                if want_debug:
-                    log(f"    [debug] link #{i}: no container found, skipping")
-                continue
-            color = ball_color(container)
+            container_text = norm(container.get_text()) if container is not None else norm(a.get_text())
+            color = ball_color(container) if container is not None else None
             if want_debug:
                 log(f"    [debug] link #{i}: ball={color!r}, "
-                    f"text='{norm(container.get_text())[:80]}'")
-            if color != "green":
-                continue  # red ball (or unmarked) = not the current open phase
-            title = clean_project_title(container.get_text(), city_name)
+                    f"text='{container_text[:80]}'")
+
+            # Primary, proven signal: the project's own text names the current
+            # phase. Ball color (when we manage to detect it at all) is only
+            # used to EXCLUDE on a confirmed red — never required for inclusion,
+            # since how the site renders the ball isn't reliably detectable as
+            # a plain <img src>.
+            if color == "red":
+                continue
+            if PHASE_MARKER not in container_text:
+                continue
+
+            title = clean_project_title(container_text, city_name)
             m = re.search(r"ID=(\d+)", a["href"])
             if m:
                 project_links.append((int(m.group(1)), title))
