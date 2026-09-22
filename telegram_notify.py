@@ -22,7 +22,7 @@ DIFF_FILE = "diff_new_reservations.json"
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 
 # --- Personalize these two -------------------------------------------------
-SITE_URL = "https://YOUR-DOMAIN-HERE"  # TODO: put your live site link once deployed
+SITE_URL = "https://phase11ahmedgaballah-beta.vercel.app/"  # TODO: put your live site link once deployed
 AGENT_NAME = "أحمد جاب الله"
 AGENT_PHONE_DISPLAY = "01009566779"
 # -----------------------------------------------------------------------------
