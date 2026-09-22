@@ -48,6 +48,7 @@ import sys
 import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import requests
@@ -114,6 +115,17 @@ def norm(s):
         return ""
     s = unicodedata.normalize("NFKC", str(s))
     return re.sub(r"\s+", " ", s).strip()
+
+
+def cairo_now():
+    return datetime.now(timezone.utc) + timedelta(hours=3)
+
+
+def truthy_feature(cell):
+    """The corner/garden/view columns hold a per-m² surcharge (e.g. '11'),
+    not a literal true/false — any non-zero value means the feature applies."""
+    c = (cell or "").strip().replace(",", "")
+    return c not in ("", "0", "0.0", "0.00")
 
 
 def strip_phase_wrapper(project_title, city_name):
@@ -282,10 +294,18 @@ def parse_plots_table(soup):
         cells = [norm(td.get_text()) for td in tr.find_all("td")]
         if len(cells) < 10:
             continue  # pager row or malformed row — skip, don't guess
-        block, plot = cells[0], cells[1]
+        block, plot, area = cells[0], cells[1], cells[2]
+        corner = truthy_feature(cells[4]) if len(cells) > 4 else False
+        garden = truthy_feature(cells[5]) if len(cells) > 5 else False
+        view = truthy_feature(cells[6]) if len(cells) > 6 else False
+        down = cells[9] if len(cells) > 9 else ""
         status_cell = cells[10] if len(cells) > 10 else ""
         reserved = any(marker in status_cell for marker in RESERVED_MARKERS)
-        rows.append({"block": block, "plot": plot, "reserved": reserved})
+        rows.append({
+            "block": block, "plot": plot, "area": area,
+            "corner": corner, "garden": garden, "view": view,
+            "down": down, "reserved": reserved,
+        })
     return rows
 
 
@@ -332,20 +352,24 @@ def _harvest_zone_task(z, delay, log):
     """Runs in its own thread with its own Session (safer than sharing one
     connection pool across threads under real concurrency)."""
     sess = Session(delay=delay)
-    reserved_keys = []
+    reserved_details = []
     plot_count = 0
     try:
         for row in harvest_zone(sess, z["zone_id"], log=log):
             plot_count += 1
             if row["reserved"]:
-                key = "|".join([
-                    norm(z["city"]), norm(z["project"]),
-                    norm(row["block"]), norm(row["plot"]),
-                ])
-                reserved_keys.append(key)
+                city, project = norm(z["city"]), norm(z["project"])
+                block, plot = norm(row["block"]), norm(row["plot"])
+                key = "|".join([city, project, block, plot])
+                reserved_details.append({
+                    "key": key, "city": city, "project": project,
+                    "block": block, "plot": plot, "area": row["area"],
+                    "corner": row["corner"], "garden": row["garden"],
+                    "view": row["view"], "down": row["down"],
+                })
     except Exception as e:
         log(f"    [error] zone {z['zone_id']} ({z['city']}/{z['project']}) failed: {e}")
-    return z, reserved_keys, plot_count
+    return z, reserved_details, plot_count
 
 
 def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
@@ -353,7 +377,7 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
     zones = discover_zones(discover_sess, cities=cities, log=log)
     log(f"[discover] found {len(zones)} zone(s) to harvest — using {workers} parallel workers")
 
-    reserved_keys = []
+    reserved_details = []
     plot_total = 0
     errors = 0
     t0 = time.time()
@@ -361,21 +385,21 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(_harvest_zone_task, z, delay, log) for z in zones]
         for fut in as_completed(futures):
-            z, keys, count = fut.result()
+            z, details, count = fut.result()
             if count == 0:
                 errors += 1
             plot_total += count
-            reserved_keys.extend(keys)
+            reserved_details.extend(details)
             log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
-                f"{count} plot(s), {len(keys)} reserved")
+                f"{count} plot(s), {len(details)} reserved")
 
     elapsed = time.time() - t0
     log(f"[harvest] done in {elapsed:.1f}s")
     if errors:
         log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
             f"errors before trusting this run's numbers")
-    log(f"[harvest] {plot_total} plot rows read, {len(reserved_keys)} reserved")
-    return reserved_keys
+    log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
+    return reserved_details
 
 
 def load_previous(path):
@@ -387,6 +411,25 @@ def load_previous(path):
         return set(data.get("reserved", []))
     except Exception:
         return set()
+
+
+def update_daily_count(new_count, path="daily_stats.json"):
+    """Keeps a running total of new reservations for 'today' (Cairo time),
+    resetting automatically when the date rolls over."""
+    today = cairo_now().strftime("%Y-%m-%d")
+    data = {"date": today, "count": 0}
+    p = Path(path)
+    if p.exists():
+        try:
+            existing = json.loads(p.read_text(encoding="utf-8"))
+            if existing.get("date") == today:
+                data = existing
+        except Exception:
+            pass
+    data["date"] = today
+    data["count"] = data.get("count", 0) + new_count
+    Path(path).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return data["count"]
 
 
 def main():
@@ -402,30 +445,38 @@ def main():
     cities = ["المنيا الجديدة"] if args.test else None
 
     previous = load_previous(args.out)
-    reserved = run(cities=cities, delay=args.delay, workers=args.workers)
-    current = set(reserved)
+    reserved_details = run(cities=cities, delay=args.delay, workers=args.workers)
+    current_map = {d["key"]: d for d in reserved_details}
+    current = set(current_map.keys())
 
     newly_reserved = sorted(current - previous)
     newly_freed = sorted(previous - current)
 
-    from datetime import datetime, timezone, timedelta
-    cairo_now = datetime.now(timezone.utc) + timedelta(hours=3)
+    now = cairo_now()
     payload = {
         "reserved": sorted(current),
-        "updatedAt": cairo_now.strftime("%Y-%m-%d %H:%M"),
+        "updatedAt": now.strftime("%Y-%m-%d %H:%M"),
     }
     Path(args.out).write_text(
         json.dumps(payload, ensure_ascii=False, indent=0), encoding="utf-8"
     )
 
+    today_total = update_daily_count(len(newly_reserved))
+
     print(f"\n=== SUMMARY ===")
     print(f"total reserved now: {len(current)}")
     print(f"newly reserved since last run: {len(newly_reserved)}")
     print(f"newly freed since last run: {len(newly_freed)}")
+    print(f"total reserved today: {today_total}")
 
-    # Write the diff for the Telegram notifier to pick up
+    # Rich per-plot details for just the NEW reservations, for Telegram
+    diff_payload = {
+        "today_total": today_total,
+        "updatedAt": now.strftime("%Y-%m-%d %H:%M"),
+        "items": [current_map[k] for k in newly_reserved],
+    }
     Path("diff_new_reservations.json").write_text(
-        json.dumps(newly_reserved, ensure_ascii=False), encoding="utf-8"
+        json.dumps(diff_payload, ensure_ascii=False), encoding="utf-8"
     )
 
     if args.test and len(current) == 0 and len(previous) == 0:
