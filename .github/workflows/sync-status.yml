@@ -4,7 +4,7 @@ name: Sync Phase 11 plot status
 # to test it before trusting the schedule.
 on:
   schedule:
-    - cron: "*/5 * * * *"   # every 5 minutes — see nuca-sync/README.md before lowering this further
+    - cron: "*/5 * * * *"   # every 5 minutes — see README.md before lowering this further
   workflow_dispatch: {}      # adds a "Run workflow" button in the GitHub UI
 
 # If a run is still going when the next one is scheduled, cancel the OLD one
@@ -31,14 +31,12 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r nuca-sync/requirements.txt
+        run: pip install -r requirements.txt
 
       - name: Run scraper
-        working-directory: nuca-sync
-        run: python scraper.py --out ../status.json
+        run: python scraper.py --out status.json
 
       - name: Send Telegram alerts for new reservations
-        working-directory: nuca-sync
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
