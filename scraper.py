@@ -55,6 +55,14 @@ from bs4 import BeautifulSoup
 
 BASE = "https://lands.nuca.gov.eg"
 PHASE_MARKER = "المرحلة الحادية عشر"
+# The site's REAL signal for "is this project part of the currently open
+# phase" is a green/red ball icon next to each project on the city page —
+# NOT the project's title text (confirmed 2026-09-23: many current-phase
+# projects don't literally say "المرحلة الحادية عشر" in their title).
+#   ball_green.png -> project is open in the current phase (what we want)
+#   ball_red.png   -> project belonged to a previous phase (skip)
+BALL_GREEN_MARKER = "ball_green"
+BALL_RED_MARKER = "ball_red"
 DEFAULT_DELAY = 0.35  # seconds between requests WITHIN one worker thread
 DEFAULT_WORKERS = 6   # zones harvested in parallel — like a browser opening a
                        # handful of connections, not a flood. Raise cautiously.
@@ -141,33 +149,53 @@ class Session:
         return r.text
 
 
-def extract_container_title(a, city_name, log=None, debug_tag=""):
+def find_project_container(a):
     """
-    The visible project/zone title is usually NOT inside the <a> itself —
-    the link text is just 'التفاصيل' (Details). The real title lives in a
-    sibling/parent block. Walk up a few container levels looking for text
-    that contains PHASE_MARKER, and pull out just the title span.
+    Walk up from the ViewProject link until we hit the block that also
+    holds its icon/ball image — that's the container for this one project
+    entry (the link's own text is just 'التفاصيل').
     """
     node = a
-    for depth in range(4):
+    for _ in range(4):
         node = node.parent
         if node is None or getattr(node, "name", None) in ("body", "html", None):
-            break
-        text = norm(node.get_text())
-        if PHASE_MARKER in text:
-            m = re.search(rf"{re.escape(PHASE_MARKER)}.*?{re.escape(city_name)}", text)
-            title = m.group(0) if m else text
-            if log and debug_tag:
-                log(f"    [debug] {debug_tag}: matched at parent depth {depth+1} "
-                    f"({node.name}): {title[:90]}")
-            return title
+            return None
+        if node.find("img") is not None:
+            return node
     return None
+
+
+def ball_color(container):
+    for img in container.find_all("img"):
+        src = (img.get("src") or "").lower()
+        if BALL_GREEN_MARKER in src:
+            return "green"
+        if BALL_RED_MARKER in src:
+            return "red"
+    return None
+
+
+def clean_project_title(container_text, city_name):
+    t = norm(container_text)
+    t = re.sub(r"التفاصيل\s*$", "", t).strip()
+    # the site frequently repeats the same title twice in one container
+    # (once as a caption, once again right before the details link)
+    half = len(t) // 2
+    first, second = t[:half].strip(), t[half:].strip()
+    if first and first == second:
+        t = first
+    # if a phase-11 labelled span is present, prefer that clean slice
+    m = re.search(rf"{re.escape(PHASE_MARKER)}.*?{re.escape(city_name)}", t)
+    if m:
+        t = norm(m.group(0))
+    return strip_phase_wrapper(t, city_name)
 
 
 def discover_zones(sess, cities=None, log=print):
     """
-    Returns a list of dicts: {city, project, zone_id, block_label}
-    covering every Phase 11 zone page found.
+    Returns a list of dicts: {city, project, zone_id}
+    covering every currently-open-phase project's zone pages, found by
+    reading the green/red ball icon next to each project on the city page.
     """
     zones = []
     target_cities = {k: v for k, v in CITIES.items() if not cities or k in cities}
@@ -184,18 +212,22 @@ def discover_zones(sess, cities=None, log=print):
 
         project_links = []
         for i, a in enumerate(proj_anchors):
-            want_debug = (not first_city_debug_done) and i < 3
-            title = extract_container_title(
-                a, city_name, log=log if want_debug else None,
-                debug_tag=f"project link #{i} (href={a['href']})" if want_debug else "",
-            )
-            if title and PHASE_MARKER in title:
-                m = re.search(r"ID=(\d+)", a["href"])
-                if m:
-                    project_links.append((int(m.group(1)), title))
-            elif want_debug:
-                log(f"    [debug] project link #{i}: no phase-11 title found "
-                    f"(raw link text: '{norm(a.get_text())}')")
+            want_debug = (not first_city_debug_done) and i < 6
+            container = find_project_container(a)
+            if container is None:
+                if want_debug:
+                    log(f"    [debug] link #{i}: no container found, skipping")
+                continue
+            color = ball_color(container)
+            if want_debug:
+                log(f"    [debug] link #{i}: ball={color!r}, "
+                    f"text='{norm(container.get_text())[:80]}'")
+            if color != "green":
+                continue  # red ball (or unmarked) = not the current open phase
+            title = clean_project_title(container.get_text(), city_name)
+            m = re.search(r"ID=(\d+)", a["href"])
+            if m:
+                project_links.append((int(m.group(1)), title))
         first_city_debug_done = True
 
         # de-dup (the project can appear twice: icon + text link)
