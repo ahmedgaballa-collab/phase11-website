@@ -405,7 +405,7 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
         log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
             f"errors before trusting this run's numbers")
     log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
-    return reserved_details
+    return reserved_details, plot_total
 
 
 def load_previous(path):
@@ -451,7 +451,18 @@ def main():
     cities = ["المنيا الجديدة"] if args.test else None
 
     previous = load_previous(args.out)
-    reserved_details = run(cities=cities, delay=args.delay, workers=args.workers)
+    reserved_details, plot_total = run(cities=cities, delay=args.delay, workers=args.workers)
+
+    if plot_total == 0:
+        print(
+            "\n[abort] 0 plot rows read this run — this is almost certainly a "
+            "parsing/discovery failure, NOT 'zero plots exist'. Refusing to "
+            "touch status.json or daily_stats.json so we don't corrupt the "
+            "saved baseline (this is exactly what caused the inflated daily "
+            "count on 2026-09-22 — a failed run wiped the previous state)."
+        )
+        sys.exit(1)
+
     current_map = {d["key"]: d for d in reserved_details}
     current = set(current_map.keys())
 
