@@ -64,11 +64,12 @@ PHASE_MARKER = "المرحلة الحادية عشر"
 #   ball_red.png   -> project belonged to a previous phase (skip)
 BALL_GREEN_MARKER = "ball_green"
 BALL_RED_MARKER = "ball_red"
-DEFAULT_DELAY = 0.35  # seconds between requests WITHIN one worker thread
-DEFAULT_WORKERS = 3   # zones harvested in parallel. Was 6, but the site started
-                       # timing out under that load (2026-09-22) — 3 is gentler.
-                       # Raise only after several clean runs at 3 with no
-                       # "Read timed out" errors in the logs.
+DEFAULT_DELAY = 0.5   # seconds between requests WITHIN one worker thread
+DEFAULT_WORKERS = 2   # zones harvested in parallel. Was 6, then 3 (2026-09-22),
+                      # but the site is still timing out a lot even at 3
+                      # (2026-09-23) — 2 is gentler still, delay bumped to 0.5s
+                      # too. Raise only after several clean runs with no
+                      # "Read timed out" errors in the logs.
 DAILY_SPAM_GUARD = 15  # more "new" reservations than this in one 5-minute run
                         # is almost certainly a key/matching bug, not real
                         # bookings — don't let it inflate the daily counter
@@ -459,7 +460,7 @@ def main():
     ap.add_argument("--out", default="status.json")
     ap.add_argument("--delay", type=float, default=DEFAULT_DELAY)
     ap.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
-                     help="zones harvested in parallel (default 6 — raise cautiously)")
+                                             help="zones harvested in parallel (default 2 — raise cautiously)")
     args = ap.parse_args()
 
     cities = ["المنيا الجديدة"] if args.test else None
