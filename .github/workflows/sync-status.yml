@@ -7,12 +7,12 @@ on:
     - cron: "0 * * * *"   # TEMP: every hour, just to measure real full-run duration — see README.md
   workflow_dispatch: {}      # adds a "Run workflow" button in the GitHub UI
 
-# If a run is still going when the next one is scheduled, cancel the OLD one
-# instead of letting runs pile up — freshness matters more than finishing
-# a stale run.
+# If a run is still going when the next one is scheduled, the new one waits
+# in the queue instead of cancelling the run in progress — avoids losing a
+# sync that's midway through.
 concurrency:
   group: phase11-sync
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 # Needed so the workflow is allowed to commit status.json back to the repo
 permissions:
