@@ -67,6 +67,9 @@ BALL_RED_MARKER = "ball_red"
 DEFAULT_DELAY = 0.35  # seconds between requests WITHIN one worker thread
 DEFAULT_WORKERS = 6   # zones harvested in parallel — like a browser opening a
                        # handful of connections, not a flood. Raise cautiously.
+DAILY_SPAM_GUARD = 15  # more "new" reservations than this in one 5-minute run
+                        # is almost certainly a key/matching bug, not real
+                        # bookings — don't let it inflate the daily counter
 TIMEOUT = 25
 
 HEADERS = {
@@ -366,7 +369,7 @@ def _harvest_zone_task(z, delay, log):
             if row["reserved"]:
                 city, project = norm(z["city"]), norm(z["project"])
                 block, plot = norm(row["block"]), norm(row["plot"])
-                key = "|".join([city, project, block, plot])
+                key = "|".join([city, block, plot])  # stable: no derived/cleaned text
                 reserved_details.append({
                     "key": key, "city": city, "project": project,
                     "block": block, "plot": plot, "area": row["area"],
@@ -478,7 +481,13 @@ def main():
         json.dumps(payload, ensure_ascii=False, indent=0), encoding="utf-8"
     )
 
-    today_total = update_daily_count(len(newly_reserved))
+    if len(newly_reserved) > DAILY_SPAM_GUARD:
+        print(f"[guard] {len(newly_reserved)} newly-reserved plots in one run is over "
+              f"the sanity threshold ({DAILY_SPAM_GUARD}) — treating this as a matching "
+              f"glitch, NOT adding it to today's count, and not sending per-plot Telegram alerts")
+        today_total = update_daily_count(0)
+    else:
+        today_total = update_daily_count(len(newly_reserved))
 
     print(f"\n=== SUMMARY ===")
     print(f"total reserved now: {len(current)}")
