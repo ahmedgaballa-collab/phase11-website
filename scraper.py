@@ -141,6 +141,29 @@ class Session:
         return r.text
 
 
+def extract_container_title(a, city_name, log=None, debug_tag=""):
+    """
+    The visible project/zone title is usually NOT inside the <a> itself —
+    the link text is just 'التفاصيل' (Details). The real title lives in a
+    sibling/parent block. Walk up a few container levels looking for text
+    that contains PHASE_MARKER, and pull out just the title span.
+    """
+    node = a
+    for depth in range(4):
+        node = node.parent
+        if node is None or getattr(node, "name", None) in ("body", "html", None):
+            break
+        text = norm(node.get_text())
+        if PHASE_MARKER in text:
+            m = re.search(rf"{re.escape(PHASE_MARKER)}.*?{re.escape(city_name)}", text)
+            title = m.group(0) if m else text
+            if log and debug_tag:
+                log(f"    [debug] {debug_tag}: matched at parent depth {depth+1} "
+                    f"({node.name}): {title[:90]}")
+            return title
+    return None
+
+
 def discover_zones(sess, cities=None, log=print):
     """
     Returns a list of dicts: {city, project, zone_id, block_label}
@@ -148,19 +171,32 @@ def discover_zones(sess, cities=None, log=print):
     """
     zones = []
     target_cities = {k: v for k, v in CITIES.items() if not cities or k in cities}
+    first_city_debug_done = False
 
     for city_name, city_id in target_cities.items():
         log(f"[discover] city: {city_name}")
         html = sess.get(f"/ar/ViewCity.aspx?ID={city_id}")
         soup = BeautifulSoup(html, "html.parser")
 
+        proj_anchors = soup.find_all("a", href=re.compile(r"ViewProject\.aspx\?ID=\d+"))
+        if not first_city_debug_done:
+            log(f"  [debug] {city_name}: {len(proj_anchors)} ViewProject link(s) found on page")
+
         project_links = []
-        for a in soup.find_all("a", href=re.compile(r"ViewProject\.aspx\?ID=\d+")):
-            title = norm(a.get_text())
-            if PHASE_MARKER in title:
+        for i, a in enumerate(proj_anchors):
+            want_debug = (not first_city_debug_done) and i < 3
+            title = extract_container_title(
+                a, city_name, log=log if want_debug else None,
+                debug_tag=f"project link #{i} (href={a['href']})" if want_debug else "",
+            )
+            if title and PHASE_MARKER in title:
                 m = re.search(r"ID=(\d+)", a["href"])
                 if m:
                     project_links.append((int(m.group(1)), title))
+            elif want_debug:
+                log(f"    [debug] project link #{i}: no phase-11 title found "
+                    f"(raw link text: '{norm(a.get_text())}')")
+        first_city_debug_done = True
 
         # de-dup (the project can appear twice: icon + text link)
         seen_proj = {}
@@ -371,4 +407,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
