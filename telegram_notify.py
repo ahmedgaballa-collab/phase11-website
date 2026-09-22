@@ -20,9 +20,12 @@ import requests
 
 DIFF_FILE = "diff_new_reservations.json"
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
+SPAM_GUARD_THRESHOLD = 15  # more "new" reservations than this in one run is
+                            # almost certainly a bug, not 15 real bookings
+                            # between two 5-minute checks — see README.md
 
 # --- Personalize these two -------------------------------------------------
-SITE_URL = "https://phase11ahmedgaballah-beta.vercel.app/"  # TODO: put your live site link once deployed
+SITE_URL = "https://YOUR-DOMAIN-HERE"  # TODO: put your live site link once deployed
 AGENT_NAME = "أحمد جاب الله"
 AGENT_PHONE_DISPLAY = "01009566779"
 # -----------------------------------------------------------------------------
@@ -98,6 +101,20 @@ def main():
 
     if not items:
         print("[telegram] no new reservations this run — nothing to send")
+        return
+
+    if len(items) > SPAM_GUARD_THRESHOLD:
+        print(f"[telegram] {len(items)} 'new' reservations in one run — "
+              f"over the sanity threshold ({SPAM_GUARD_THRESHOLD}), sending ONE "
+              f"warning instead of flooding the channel")
+        warning = (
+            "⚠️ تنبيه فني — تم إيقاف إشعارات هذه الدفعة مؤقتًا\n\n"
+            f"النظام رصد {len(items)} قطعة \"جديدة\" في تشغيلة واحدة، وهو رقم "
+            "غير منطقي لفترة 5 دقائق. على الأغلب تغيير تقني في نظام المطابقة، "
+            "مش حجوزات حقيقية بهذا الحجم. تم تجاهل الإرسال التفصيلي لحماية "
+            "القناة — راجع status.json يدويًا قبل الوثوق في الأرقام القادمة."
+        )
+        send(token, chat_id, warning)
         return
 
     print(f"[telegram] sending {len(items)} notification(s)")
