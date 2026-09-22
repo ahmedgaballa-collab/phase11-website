@@ -65,12 +65,14 @@ PHASE_MARKER = "المرحلة الحادية عشر"
 BALL_GREEN_MARKER = "ball_green"
 BALL_RED_MARKER = "ball_red"
 DEFAULT_DELAY = 0.35  # seconds between requests WITHIN one worker thread
-DEFAULT_WORKERS = 6   # zones harvested in parallel — like a browser opening a
-                       # handful of connections, not a flood. Raise cautiously.
+DEFAULT_WORKERS = 3   # zones harvested in parallel. Was 6, but the site started
+                       # timing out under that load (2026-09-22) — 3 is gentler.
+                       # Raise only after several clean runs at 3 with no
+                       # "Read timed out" errors in the logs.
 DAILY_SPAM_GUARD = 15  # more "new" reservations than this in one 5-minute run
                         # is almost certainly a key/matching bug, not real
                         # bookings — don't let it inflate the daily counter
-TIMEOUT = 25
+TIMEOUT = 40
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -151,17 +153,26 @@ class Session:
         self.s.headers.update(HEADERS)
         self.delay = delay
 
-    def get(self, path):
+    def _request(self, method, path, **kwargs):
         time.sleep(self.delay)
-        r = self.s.get(BASE + path, timeout=TIMEOUT)
-        r.raise_for_status()
-        return r.text
+        try:
+            r = method(BASE + path, timeout=TIMEOUT, **kwargs)
+            r.raise_for_status()
+            return r.text
+        except (requests.Timeout, requests.ConnectionError) as e:
+            # One retry, with a real pause first — a burst of concurrent
+            # workers can make the site slow to respond; hammering it again
+            # immediately just makes that worse.
+            time.sleep(3.0)
+            r = method(BASE + path, timeout=TIMEOUT, **kwargs)
+            r.raise_for_status()
+            return r.text
+
+    def get(self, path):
+        return self._request(self.s.get, path)
 
     def post(self, path, data):
-        time.sleep(self.delay)
-        r = self.s.post(BASE + path, data=data, timeout=TIMEOUT)
-        r.raise_for_status()
-        return r.text
+        return self._request(self.s.post, path, data=data)
 
 
 def find_project_container(a):
