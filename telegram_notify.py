@@ -25,7 +25,7 @@ SPAM_GUARD_THRESHOLD = 15  # more "new" reservations than this in one run is
                             # between two 5-minute checks — see README.md
 
 # --- Personalize these two -------------------------------------------------
-SITE_URL = "https://YOUR-DOMAIN-HERE"  # TODO: put your live site link once deployed
+SITE_URL = "https://https://phase11ahmedgaballah-beta.vercel.app/"  # TODO: put your live site link once deployed
 AGENT_NAME = "أحمد جاب الله"
 AGENT_PHONE_DISPLAY = "01009566779"
 # -----------------------------------------------------------------------------
