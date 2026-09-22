@@ -187,6 +187,21 @@
   .view-toggle button{background:var(--bg-field); border:0; color:var(--paper-faint); font-family:'Tajawal',sans-serif; font-size:12.5px; padding:8px 16px; cursor:pointer;}
   .view-toggle button.active{background:var(--gold); color:#1a1206; font-weight:700;}
 
+  .status-toggle{display:flex; gap:8px; flex-wrap:wrap;}
+  .status-toggle button{background:var(--panel2); border:1px solid var(--line); color:var(--paper-dim); border-radius:999px; font-size:12.5px; padding:8px 16px; cursor:pointer; display:flex; align-items:center; gap:6px;}
+  .status-toggle button .cnt{opacity:.75; font-size:11.5px;}
+  .status-toggle button.active{background:var(--gold); color:#1a1206; font-weight:700;}
+  .status-toggle button.active[data-status="reserved"]{background:#6b3a3a; color:#f2e4e4;}
+  .status-toggle button.active[data-status="all"]{background:var(--gold); color:#1a1206;}
+
+  .kpi-strip{padding:18px 0 0;}
+  .kpi-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  .kpi-card{background:var(--panel2); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; text-align:center;}
+  .kpi-value{font-size:22px; font-weight:800; color:var(--gold);}
+  .kpi-value.sage{color:var(--sage);}
+  .kpi-label{font-size:11.5px; color:var(--paper-dim); margin-top:4px;}
+  @media (max-width:600px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+
   .empty-state{text-align:center; padding:60px 20px; color:var(--paper-dim); border:1px dashed var(--line); border-radius:var(--radius);}
   .empty-state .big{font-size:34px; margin-bottom:8px;}
   .empty-state p{margin:4px 0 0; font-size:13.5px;}
@@ -358,6 +373,15 @@
   </div>
 </header>
 
+<section class="kpi-strip">
+  <div class="wrap kpi-grid">
+    <div class="kpi-card"><div class="kpi-value" id="kpiTotal">—</div><div class="kpi-label" data-i18n="totalPlots">إجمالي القطع</div></div>
+    <div class="kpi-card"><div class="kpi-value sage" id="kpiAvailable">—</div><div class="kpi-label" data-i18n="kpiAvailable">متاح</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="kpiReserved">—</div><div class="kpi-label" data-i18n="kpiReserved">محجوز</div></div>
+    <div class="kpi-card"><div class="kpi-value" id="kpiRate">—</div><div class="kpi-label" data-i18n="kpiRate">نسبة الحجز</div></div>
+  </div>
+</section>
+
 <section class="hero">
   <div class="wrap">
     <h1><span id="heroTitle1" data-i18n="heroTitle1">قد إيه المقدم اللي</span> <span id="heroTitleSpan" data-i18n="heroTitleSpan">حولته؟</span></h1>
@@ -414,11 +438,6 @@
           <div class="toggle-chip" id="chipView" data-key="view" data-i18n="view">إطلالة بحر/نيل</div>
         </div>
       </div>
-      <label class="hide-reserved-toggle" style="grid-column:1/-1;">
-        <input type="checkbox" id="hideReservedChk">
-        <span data-i18n="hideReserved">إخفاء القطع المحجوزة</span>
-        <span style="color:var(--paper-faint);">(<span id="reservedCount">0</span>)</span>
-      </label>
       <button class="clear-link" id="clearAll" data-i18n="clearAll">مسح كل الفلاتر</button>
     </div>
   </div>
@@ -432,9 +451,16 @@
         <div class="freshness" id="freshness"></div>
         <div class="freshness" id="freshnessLive"></div>
       </div>
-      <div class="view-toggle">
-        <button id="btnCards" class="active" data-i18n="viewCards">كروت</button>
-        <button id="btnTable" data-i18n="viewTable">جدول</button>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <div class="status-toggle" id="statusToggle">
+          <button class="active" data-status="all"><span data-i18n="statusAll">الكل</span><span class="cnt"></span></button>
+          <button data-status="available"><span data-i18n="statusAvailable">متاح</span><span class="cnt"></span></button>
+          <button data-status="reserved"><span data-i18n="statusReserved">تم التخصيص</span><span class="cnt"></span></button>
+        </div>
+        <div class="view-toggle">
+          <button id="btnCards" class="active" data-i18n="viewCards">كروت</button>
+          <button id="btnTable" data-i18n="viewTable">جدول</button>
+        </div>
       </div>
     </div>
     <div id="resultsArea"></div>
@@ -484,6 +510,7 @@ const I18N = {
     desc:'ابحث عن قطعتك في أراضي المرحلة 11 حسب المقدم والمدينة والمساحة — مع أحمد جاب الله، مستشارك العقاري.',
     brandKicker:'مستشارك العقاري', brandName:'أحمد جاب الله',
     totalPlots:'إجمالي القطع', whatsapp:'واتساب',
+kpiReserved:'محجوز', kpiAvailable:'متاح', kpiRate:'نسبة الحجز', statusAll:'الكل',
     heroTitle1:'قد إيه المقدم اللي', heroTitleSpan:'حولته؟',
     heroLead:'اكتب المبلغ اللي حوّلته كمقدم، وهرشّحلك بنفسي كل القطع اللي تناسب المبلغ ده من إجمالي القطع.',
     budgetLabel:'المبلغ اللي حوّلته كمقدم', budgetPlaceholder:'25,000',
@@ -507,7 +534,7 @@ const I18N = {
     area:'المساحة', pricePerM:'سعر المتر', totalPrice:'السعر الإجمالي', downRequired:'المقدم المطلوب',
     annualInstallment:(v)=>`قسط سنوي تقريبي (على 3 سنوات): ${v}`,
     premiumBadge:'قطعة استثنائية', waCardBtn:'استفسار واتساب', loadMore:'عرض المزيد',
-    reservedBadge:'تم التخصيص', hideReserved:'إخفاء القطع المحجوزة', statusCol:'الحالة', statusAvailable:'متاح', statusReserved:'تم التخصيص', similarBtn:'اسأل عن قطعة مشابهة',
+    reservedBadge:'تم التخصيص', statusCol:'الحالة', statusAvailable:'متاح', statusReserved:'تم التخصيص', similarBtn:'اسأل عن قطعة مشابهة',
     freshnessLive:(n)=>`${n} قطعة محجوزة محدثة تلقائيًا من موقع الهيئة`,
     disclaimer:'الأداة مبنية على بيانات ملف "أراضي المرحلة 11" — للتأكد النهائي من التوفر والحجز، تواصل مباشرة.',
     tagline:'مستشارك العقاري · Real Estate Consultant',
@@ -531,6 +558,7 @@ const I18N = {
     desc:'Find your plot in Phase 11 land by down payment, city and area — with Ahmed Gaballah, your real estate consultant.',
     brandKicker:'Real Estate Consultant', brandName:'Ahmed Gaballah',
     totalPlots:'Total Plots', whatsapp:'WhatsApp',
+kpiReserved:'Reserved', kpiAvailable:'Available', kpiRate:'Booking Rate', statusAll:'All',
     heroTitle1:"What's your", heroTitleSpan:'down payment?',
     heroLead:"Enter the amount you've transferred as a down payment, and we'll match you with every plot within that amount out of the full listing.",
     budgetLabel:"Amount you've transferred as down payment", budgetPlaceholder:'25,000',
@@ -554,7 +582,7 @@ const I18N = {
     area:'Area', pricePerM:'Price / m²', totalPrice:'Total Price', downRequired:'Required Down Payment',
     annualInstallment:(v)=>`Est. annual installment (over 3 years): ${v}`,
     premiumBadge:'Exceptional plot', waCardBtn:'Ask on WhatsApp', loadMore:'Load more',
-    reservedBadge:'Reserved', hideReserved:'Hide reserved plots', statusCol:'Status', statusAvailable:'Available', statusReserved:'Reserved', similarBtn:'Ask about a similar plot',
+    reservedBadge:'Reserved', statusCol:'Status', statusAvailable:'Available', statusReserved:'Reserved', similarBtn:'Ask about a similar plot',
     freshnessLive:(n)=>`${n} reserved plots — auto-synced from the official site`,
     disclaimer:'This tool is built on the "Phase 11 Land" data file — for final confirmation of availability and booking, please get in touch directly.',
     tagline:'Real Estate Consultant · مستشارك العقاري',
@@ -583,7 +611,7 @@ const state = {
   lang: 'ar',
   budget: null, city:'all', project:'all', areaMin:null, areaMax:null,
   corner:false, garden:false, view:false, sort:'match', mode:'cards', visible:24, wishlistOnly:false,
-  hideReserved:false
+  statusFilter:'all'
 };
 const wishlist = new Set();
 let reservedSet = new Set();
@@ -606,7 +634,20 @@ async function loadReservedStatus(){
     const data = await res.json();
     if(Array.isArray(data.reserved)) reservedSet = new Set(data.reserved.map(normKey));
     reservedUpdatedAt = data.updatedAt || null;
-    document.getElementById('reservedCount').textContent = reservedSet.size;
+    const totalN = DB.rows.length;
+    const resN = reservedSet.size;
+    const availN = Math.max(totalN - resN, 0);
+    const rate = totalN ? Math.round((resN/totalN)*100) : 0;
+    const kpiRes = document.getElementById('kpiReserved'); if(kpiRes) kpiRes.textContent = fmtNum(resN);
+    const kpiAvail = document.getElementById('kpiAvailable'); if(kpiAvail) kpiAvail.textContent = fmtNum(availN);
+    const kpiRate = document.getElementById('kpiRate'); if(kpiRate) kpiRate.textContent = rate + '%';
+    document.querySelectorAll('#statusToggle button').forEach(btn=>{
+      const cnt = btn.querySelector('.cnt');
+      if(!cnt) return;
+      if(btn.dataset.status==='all') cnt.textContent = '('+fmtNum(totalN)+')';
+      else if(btn.dataset.status==='available') cnt.textContent = '('+fmtNum(availN)+')';
+      else if(btn.dataset.status==='reserved') cnt.textContent = '('+fmtNum(resN)+')';
+    });
     renderFreshnessLive();
     render();
   }catch(e){ console.warn('status.json not available yet', e); }
@@ -718,7 +759,8 @@ function matches(row){
   if(state.garden && !row[R_GARDEN]) return false;
   if(state.view && !row[R_VIEW]) return false;
   if(state.wishlistOnly && !wishlist.has(row[R_ID])) return false;
-  if(state.hideReserved && isReserved(row)) return false;
+  if(state.statusFilter==='available' && isReserved(row)) return false;
+  if(state.statusFilter==='reserved' && !isReserved(row)) return false;
   return true;
 }
 
@@ -934,8 +976,13 @@ function wireEvents(){
     state.wishlistOnly = !state.wishlistOnly; state.visible=24; updateWishUI(); render();
   });
 
-  document.getElementById('hideReservedChk').addEventListener('change', e=>{
-    state.hideReserved = e.target.checked; state.visible=24; render();
+  document.querySelectorAll('#statusToggle button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#statusToggle button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.statusFilter = btn.dataset.status;
+      state.visible=24; render();
+    });
   });
 
   document.getElementById('clearAll').addEventListener('click', ()=>{
@@ -946,6 +993,8 @@ function wireEvents(){
     document.querySelectorAll('.toggle-chip').forEach(c=>c.classList.remove('active'));
     document.querySelectorAll('.preset-chip').forEach(c=>c.classList.remove('active'));
     document.getElementById('citySelect').value='all';
+    state.statusFilter='all';
+    document.querySelectorAll('#statusToggle button').forEach(b=>b.classList.toggle('active', b.dataset.status==='all'));
     updateProjectSelect(); render();
   });
 
@@ -982,6 +1031,7 @@ function init(){
   document.documentElement.dir = t().dir;
 
   document.getElementById('totalPill').textContent = fmtNum(DB.rows.length);
+  document.getElementById('kpiTotal').textContent = fmtNum(DB.rows.length);
   applyStaticI18n();
   buildPresets();
   populateSelects();
