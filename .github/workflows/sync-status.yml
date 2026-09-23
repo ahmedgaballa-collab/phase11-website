@@ -43,12 +43,14 @@ jobs:
         run: python scraper.py --out status.json ${{ (github.event_name == 'workflow_dispatch' && inputs.test) && '--test' || '' }}
 
       - name: Send Telegram alerts for new reservations
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.test) }}
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python telegram_notify.py
 
       - name: Commit updated status.json (if changed)
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.test) }}
         run: |
           git config user.name "phase11-sync-bot"
           git config user.email "actions@users.noreply.github.com"
