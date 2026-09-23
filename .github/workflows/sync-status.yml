@@ -5,7 +5,13 @@ name: Sync Phase 11 plot status
 on:
   schedule:
     - cron: "0 * * * *"   # TEMP: every hour, just to measure real full-run duration — see README.md
-  workflow_dispatch: {}      # adds a "Run workflow" button in the GitHub UI
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Test mode: crawl only المنيا الجديدة only, for a quick sanity check"
+        type: boolean
+        default: false
+      # adds a “Run workflow” button in the GitHub UI, with an optional test-mode checkbox
 
 # If a run is still going when the next one is scheduled, the new one waits
 # in the queue instead of cancelling the run in progress — avoids losing a
@@ -34,7 +40,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run scraper
-        run: python scraper.py --out status.json
+        run: python scraper.py --out status.json ${{ (github.event_name == 'workflow_dispatch' && inputs.test) && '--test' || '' }}
 
       - name: Send Telegram alerts for new reservations
         env:
