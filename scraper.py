@@ -76,7 +76,12 @@ DEFAULT_WORKERS = 1   # zones harvested in parallel. Was 6, then 3 (2026-09-22),
 DAILY_SPAM_GUARD = 15  # more "new" reservations than this in one 5-minute run
                         # is almost certainly a key/matching bug, not real
                         # bookings — don't let it inflate the daily counter
-TIMEOUT = 150  # bumped from 50 to test whether the booked-filter pass is truly hanging or just slow (2026-09-23 diagnostic)
+TIMEOUT = 50  # confirmed 2026-09-23: even 150s does not help (100% "Read timed
+                # out" on the booked-filter pass from GitHub Actions specifically,
+                # while the same request succeeds reliably from a regular browser) —
+                # this looks like a network-level block/throttle on GitHub-hosted
+                # runner IPs hitting lands.nuca.gov.eg, not marginal slowness. Do NOT
+                # just keep raising this value; it will not fix the failure rate.
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
