@@ -76,7 +76,7 @@ DEFAULT_WORKERS = 1   # zones harvested in parallel. Was 6, then 3 (2026-09-22),
 DAILY_SPAM_GUARD = 15  # more "new" reservations than this in one 5-minute run
                         # is almost certainly a key/matching bug, not real
                         # bookings — don't let it inflate the daily counter
-TIMEOUT = 50
+TIMEOUT = 150  # bumped from 50 to test whether the booked-filter pass is truly hanging or just slow (2026-09-23 diagnostic)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
