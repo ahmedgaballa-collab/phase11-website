@@ -112,7 +112,13 @@ CITIES = {
     "حدائق العاشر": 2028,
 }
 
-RESERVED_MARKERS = ("حجز",)  # "حجز مبدئى" etc. — any cell containing "حجز" = reserved
+# NOTE: we used to flag any طلب الحجز cell containing "حجز" (e.g. "حجز مبدئى")
+# as reserved. That was WRONG: NUCA's own site still lists those plots under
+# its "عرض القطع المتاحة فقط" (available) filter — a preliminary request is
+# not a finalized allocation. The only authoritative signal is NUCA's own
+# "عرض القطع المحجوزة فقط" filter (PlotType=rdShowBooked, see harvest_zone
+# below), whose طلب الحجز cells read "غير متاحة". We query that filter
+# directly instead of guessing from cell text.
 
 
 def norm(s):
@@ -320,12 +326,10 @@ def parse_plots_table(soup):
         garden = truthy_feature(cells[5]) if len(cells) > 5 else False
         view = truthy_feature(cells[6]) if len(cells) > 6 else False
         down = cells[9] if len(cells) > 9 else ""
-        status_cell = cells[10] if len(cells) > 10 else ""
-        reserved = any(marker in status_cell for marker in RESERVED_MARKERS)
         rows.append({
             "block": block, "plot": plot, "area": area,
             "corner": corner, "garden": garden, "view": view,
-            "down": down, "reserved": reserved,
+            "down": down,
         })
     return rows
 
@@ -339,12 +343,11 @@ def max_page_number(soup):
     return max(pages) if pages else 1
 
 
-def harvest_zone(sess, zone_id, log=print):
-    """Yields dicts {block, plot, reserved} for every plot in this zone."""
-    path = f"/ar/ViewZone.aspx?ID={zone_id}"
-    html = sess.get(path)
-    soup = BeautifulSoup(html, "html.parser")
-
+def _paginate_zone(sess, path, soup, zone_id, log=print, plot_type=None):
+    """Yields row dicts from `soup` (a page already fetched for this zone),
+    then follows the grdPlots pager for any further pages. When `plot_type`
+    is set, it is resent on every page postback so the server keeps applying
+    the same PlotType filter (available/booked) across pages."""
     rows = parse_plots_table(soup)
     for r in rows:
         yield r
@@ -358,6 +361,8 @@ def harvest_zone(sess, zone_id, log=print):
         form = dict(hidden)
         form["__EVENTTARGET"] = "ctl00$MainContent$grdPlots"
         form["__EVENTARGUMENT"] = f"Page${page_num}"
+        if plot_type:
+            form["ctl00$MainContent$PlotType"] = plot_type
         html = sess.post(path, form)
         soup = BeautifulSoup(html, "html.parser")
         rows = parse_plots_table(soup)
@@ -367,6 +372,56 @@ def harvest_zone(sess, zone_id, log=print):
         for r in rows:
             yield r
         hidden = parse_hidden_fields(soup)  # refresh viewstate for the next postback
+
+
+def harvest_zone(sess, zone_id, log=print):
+    """Yields dicts {block, plot, ..., reserved} for every plot in this zone.
+
+    Two passes against ViewZone.aspx's own PlotType filter — NUCA's own
+    authoritative signal, not a guess from cell text:
+      1. "عرض القطع المتاحة فقط" (rdShowAvailable, the default) — every plot
+         listed here is NOT finalized yet, even ones showing a "حجز مبدئى"
+         (preliminary request) in the طلب الحجز column.
+      2. "عرض القطع المحجوزة فقط" (rdShowBooked) — every plot listed here IS
+         finalized (طلب الحجز reads "غير متاحة"). Confirmed live against the
+         real site: a finalized plot never shows up under the available
+         filter at all, so the two passes never overlap and never
+         double-count plot_total.
+    """
+    path = f"/ar/ViewZone.aspx?ID={zone_id}"
+
+    # Pass 1: available (default) filter — nothing here is finalized yet.
+    html = sess.get(path)
+    soup = BeautifulSoup(html, "html.parser")
+    for r in _paginate_zone(sess, path, soup, zone_id, log=log):
+        r["reserved"] = False
+        yield r
+
+    # Pass 2: switch to the booked-only filter — same radio button / postback
+    # mechanism the site's own UI uses — and page through it the same way.
+    hidden = parse_hidden_fields(soup)
+    form = dict(hidden)
+    form["__EVENTTARGET"] = "ctl00$MainContent$rdShowBooked"
+    form["__EVENTARGUMENT"] = ""
+    form["__LASTFOCUS"] = ""
+    form["__VIEWSTATEENCRYPTED"] = ""
+    form["ctl00$MainContent$txtPlotNumber"] = ""
+    form["ctl00$MainContent$PlotType"] = "rdShowBooked"
+    html = sess.post(path, form)
+    soup = BeautifulSoup(html, "html.parser")
+
+    table_present = soup.find(id=re.compile(r"grdPlots$")) is not None
+    no_results = "لا يوجد" in html
+    if not table_present and not no_results:
+        log(f"    [error] zone {zone_id}: booked-filter response looks wrong "
+            f"(no grdPlots table, no 'no results' message) — treating as 0 "
+            f"booked plots for this zone, but this needs a manual look, not "
+            f"blind trust")
+        return
+
+    for r in _paginate_zone(sess, path, soup, zone_id, log=log, plot_type="rdShowBooked"):
+        r["reserved"] = True
+        yield r
 
 
 def _harvest_zone_task(z, delay, log):
