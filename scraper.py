@@ -64,16 +64,19 @@ PHASE_MARKER = "المرحلة الحادية عشر"
 #   ball_red.png   -> project belonged to a previous phase (skip)
 BALL_GREEN_MARKER = "ball_green"
 BALL_RED_MARKER = "ball_red"
-DEFAULT_DELAY = 0.5   # seconds between requests WITHIN one worker thread
-DEFAULT_WORKERS = 2   # zones harvested in parallel. Was 6, then 3 (2026-09-22),
-                      # but the site is still timing out a lot even at 3
-                      # (2026-09-23) — 2 is gentler still, delay bumped to 0.5s
-                      # too. Raise only after several clean runs with no
-                      # "Read timed out" errors in the logs.
+DEFAULT_DELAY = 1.5   # seconds between requests WITHIN one worker thread
+DEFAULT_WORKERS = 1   # zones harvested in parallel. Was 6, then 3 (2026-09-22),
+                      # then 2 with a 0.5s delay — but the full run on
+                      # 2026-09-23 (the one that added the second,
+                      # booked-filter pass per zone) still timed out on
+                      # nearly every zone even at 2 workers, crawling at
+                      # roughly 1 zone per 4+ minutes. Backing off further:
+                      # 1 worker, 1.5s delay. Raise only after several clean
+                      # runs with no "Read timed out" errors in the logs.
 DAILY_SPAM_GUARD = 15  # more "new" reservations than this in one 5-minute run
                         # is almost certainly a key/matching bug, not real
                         # bookings — don't let it inflate the daily counter
-TIMEOUT = 40
+TIMEOUT = 50
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
