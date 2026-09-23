@@ -539,6 +539,16 @@ def main():
     current_map = {d["key"]: d for d in reserved_details}
     current = set(current_map.keys())
 
+    if len(current) == 0 and plot_total > 500 and len(previous) > 0:
+        print(
+            f"\n[abort] {plot_total} plot rows read but 0 came back reserved — "
+            "given the previous run found reservations, this is almost certainly "
+            "a booked-filter request failure (e.g. every zone timing out on that "
+            "specific request), NOT a real drop to zero. Refusing to touch "
+            "status.json so we don't overwrite real reservation data with this."
+        )
+        sys.exit(1)
+
     newly_reserved = sorted(current - previous)
     newly_freed = sorted(previous - current)
 
