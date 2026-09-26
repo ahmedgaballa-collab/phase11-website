@@ -9,8 +9,10 @@ What this does
    "Zone" page (ViewZone.aspx) under each of those projects.
 2. HARVEST: for every Zone page, pages through the plots grid (an ASP.NET
    WebForms GridView that uses __doPostBack for pagination — handled here
-   with plain POST requests, no browser needed) and reads the "طلب الحجز"
-   (booking) column for every plot.
+   with the same raw POST field names ASP.NET itself uses, but sent as an
+   in-page fetch() through a real Chrome browser — see the 2026-09-26 note
+   above TIMEOUT for why a plain HTTP client no longer works here) and reads
+   the "طلب الحجز" (booking) column for every plot.
 3. OUTPUT: writes status.json in the exact shape the website's
    loadReservedStatus() expects:
        {"reserved": ["<city>|<project>|<area>|<block>|<plot>", ...],
@@ -43,16 +45,17 @@ IMPORTANT — read before running unattended
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
 import unicodedata
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from urllib.parse import urlencode
 
-import requests
 from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 
 BASE = "https://lands.nuca.gov.eg"
 PHASE_MARKER = "المرحلة الحادية عشر"
@@ -82,6 +85,20 @@ TIMEOUT = 50  # confirmed 2026-09-23: even 150s does not help (100% "Read timed
                 # this looks like a network-level block/throttle on GitHub-hosted
                 # runner IPs hitting lands.nuca.gov.eg, not marginal slowness. Do NOT
                 # just keep raising this value; it will not fix the failure rate.
+
+# 2026-09-26: confirmed the block is NOT specific to GitHub Actions — it also
+# hit Ahmed's own home connection (plain ConnectTimeout with no VPN at all)
+# AND a Python client with a full Chrome TLS/HTTP fingerprint (curl_cffi,
+# impersonate=chrome124/120/110 — still "Read timed out" every time) AND an
+# unrelated real Chromium browser with no VPN extension loaded. The ONE
+# combination that reliably reaches the site is Ahmed's own everyday Chrome
+# with the VeePN extension active. So this version drives an actual Chrome
+# browser (via Playwright, reusing a copy of that Chrome profile so the
+# VeePN extension + its login come along) instead of a raw HTTP client —
+# every request below goes through page.evaluate()'s fetch(), i.e. through
+# Chrome's own network stack, not Python's.
+CHROME_PROFILE_DIR = os.environ.get("CHROME_PROFILE_DIR", "")
+CHROME_HEADLESS = os.environ.get("CHROME_HEADLESS", "0") == "1"
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -162,32 +179,89 @@ def strip_phase_wrapper(project_title, city_name):
     return norm(t)
 
 
-class Session:
-    def __init__(self, delay=DEFAULT_DELAY):
-        self.s = requests.Session()
-        self.s.headers.update(HEADERS)
-        self.delay = delay
+_FETCH_JS = """
+async ({url, method, body, timeoutMs}) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const opts = {method, credentials: 'same-origin', signal: controller.signal};
+        if (body !== null) {
+            opts.headers = {'Content-Type': 'application/x-www-form-urlencoded'};
+            opts.body = body;
+        }
+        const res = await fetch(url, opts);
+        const text = await res.text();
+        return {ok: true, status: res.status, text: text};
+    } catch (e) {
+        return {ok: false, error: String(e && e.message ? e.message : e)};
+    } finally {
+        clearTimeout(timer);
+    }
+}
+"""
 
-    def _request(self, method, path, **kwargs):
-        time.sleep(self.delay)
+
+class Session:
+    """Drives a real Chrome browser (Ahmed's own profile + VeePN extension,
+    see the 2026-09-26 note above TIMEOUT) and issues every GET/POST as an
+    in-page fetch() — so it goes through Chrome's actual network stack, not
+    a separate Python HTTP client. One real top-level navigation happens
+    first (so any page-load-only checks the site does get to run and any
+    cookie they set is in place) and every request after that is a
+    same-origin fetch() from that page."""
+
+    def __init__(self, delay=DEFAULT_DELAY, profile_dir=None):
+        self.delay = delay
+        profile_dir = profile_dir or CHROME_PROFILE_DIR
+        if not profile_dir:
+            raise RuntimeError(
+                "CHROME_PROFILE_DIR is not set — Session needs a Chrome profile "
+                "directory (a copy of Ahmed's real profile, so the VeePN "
+                "extension is present and already logged in) to launch."
+            )
+        self._pw = sync_playwright().start()
         try:
-            r = method(BASE + path, timeout=TIMEOUT, **kwargs)
-            r.raise_for_status()
-            return r.text
-        except (requests.Timeout, requests.ConnectionError) as e:
-            # One retry, with a real pause first — a burst of concurrent
-            # workers can make the site slow to respond; hammering it again
-            # immediately just makes that worse.
+            self.context = self._pw.chromium.launch_persistent_context(
+                profile_dir,
+                channel="chrome",
+                headless=CHROME_HEADLESS,
+                args=["--lang=ar-EG"],
+            )
+        except Exception:
+            self._pw.stop()
+            raise
+        self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
+        # Real navigation, not fetch() — lets the site's own page-load checks
+        # (and the VeePN-routed connection itself) run once, up front.
+        self.page.goto(BASE + "/ar/Home.aspx", timeout=TIMEOUT * 1000)
+
+    def _request(self, method, path, data=None):
+        time.sleep(self.delay)
+        body = urlencode(data) if data is not None else None
+        arg = {"url": BASE + path, "method": method, "body": body, "timeoutMs": TIMEOUT * 1000}
+        result = self.page.evaluate(_FETCH_JS, arg)
+        if not result["ok"]:
+            # One retry, with a real pause first — mirrors the old requests-based
+            # retry: a slow/busy server benefits from backing off, not hammering.
             time.sleep(3.0)
-            r = method(BASE + path, timeout=TIMEOUT, **kwargs)
-            r.raise_for_status()
-            return r.text
+            result = self.page.evaluate(_FETCH_JS, arg)
+            if not result["ok"]:
+                raise RuntimeError(f"fetch failed for {path}: {result['error']}")
+        if result["status"] >= 400:
+            raise RuntimeError(f"HTTP {result['status']} for {path}")
+        return result["text"]
 
     def get(self, path):
-        return self._request(self.s.get, path)
+        return self._request("GET", path)
 
     def post(self, path, data):
-        return self._request(self.s.post, path, data=data)
+        return self._request("POST", path, data=data)
+
+    def close(self):
+        try:
+            self.context.close()
+        finally:
+            self._pw.stop()
 
 
 def find_project_container(a):
@@ -432,10 +506,12 @@ def harvest_zone(sess, zone_id, log=print):
         yield r
 
 
-def _harvest_zone_task(z, delay, log):
-    """Runs in its own thread with its own Session (safer than sharing one
-    connection pool across threads under real concurrency)."""
-    sess = Session(delay=delay)
+def _harvest_zone_task(z, sess, log):
+    """Runs against the shared Session (one real Chrome browser — launching
+    a fresh one per zone would mean relaunching Chrome dozens of times per
+    run). Safe because DEFAULT_WORKERS is 1: zones are processed one at a
+    time, never concurrently, so there is no cross-thread use of the same
+    Playwright page."""
     reserved_details = []
     plot_count = 0
     try:
@@ -457,19 +533,23 @@ def _harvest_zone_task(z, delay, log):
 
 
 def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
-    discover_sess = Session(delay=delay)
-    zones = discover_zones(discover_sess, cities=cities, log=log)
-    log(f"[discover] found {len(zones)} zone(s) to harvest — using {workers} parallel workers")
+    if workers != 1:
+        log(f"[warn] workers={workers} requested, but the Chrome-driven Session "
+            f"is single-browser — forcing workers=1 (one zone at a time).")
+        workers = 1
 
-    reserved_details = []
-    plot_total = 0
-    errors = 0
-    t0 = time.time()
+    sess = Session(delay=delay)
+    try:
+        zones = discover_zones(sess, cities=cities, log=log)
+        log(f"[discover] found {len(zones)} zone(s) to harvest")
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = [pool.submit(_harvest_zone_task, z, delay, log) for z in zones]
-        for fut in as_completed(futures):
-            z, details, count = fut.result()
+        reserved_details = []
+        plot_total = 0
+        errors = 0
+        t0 = time.time()
+
+        for z in zones:
+            z, details, count = _harvest_zone_task(z, sess, log)
             if count == 0:
                 errors += 1
             plot_total += count
@@ -477,13 +557,15 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
             log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
                 f"{count} plot(s), {len(details)} reserved")
 
-    elapsed = time.time() - t0
-    log(f"[harvest] done in {elapsed:.1f}s")
-    if errors:
-        log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
-            f"errors before trusting this run's numbers")
-    log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
-    return reserved_details, plot_total
+        elapsed = time.time() - t0
+        log(f"[harvest] done in {elapsed:.1f}s")
+        if errors:
+            log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
+                f"errors before trusting this run's numbers")
+        log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
+        return reserved_details, plot_total
+    finally:
+        sess.close()
 
 
 def load_previous(path):
