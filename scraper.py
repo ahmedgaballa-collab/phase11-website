@@ -57,6 +57,22 @@ from urllib.parse import urlencode
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
+import supabase_sync
+
+
+def load_dotenv(path=None):
+    """Reads KEY=VALUE lines from .env next to this script (never committed —
+    see .gitignore). Existing environment variables win."""
+    p = Path(path) if path else Path(__file__).with_name(".env")
+    if not p.exists():
+        return
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.split("=", 1)
+        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
 BASE = "https://lands.nuca.gov.eg"
 PHASE_MARKER = "المرحلة الحادية عشر"
 # The site's REAL signal for "is this project part of the currently open
@@ -513,23 +529,28 @@ def _harvest_zone_task(z, sess, log):
     time, never concurrently, so there is no cross-thread use of the same
     Playwright page."""
     reserved_details = []
+    all_rows = []
     plot_count = 0
     try:
         for row in harvest_zone(sess, z["zone_id"], log=log):
             plot_count += 1
+            city, project = norm(z["city"]), norm(z["project"])
+            block, plot = norm(row["block"]), norm(row["plot"])
+            key = "|".join([city, block, plot])  # stable: no derived/cleaned text
+            detail = {
+                "key": key, "city": city, "project": project,
+                "zone_id": z["zone_id"],
+                "block": block, "plot": plot, "area": row["area"],
+                "corner": row["corner"], "garden": row["garden"],
+                "view": row["view"], "down": row["down"],
+                "reserved": row["reserved"],
+            }
+            all_rows.append(detail)
             if row["reserved"]:
-                city, project = norm(z["city"]), norm(z["project"])
-                block, plot = norm(row["block"]), norm(row["plot"])
-                key = "|".join([city, block, plot])  # stable: no derived/cleaned text
-                reserved_details.append({
-                    "key": key, "city": city, "project": project,
-                    "block": block, "plot": plot, "area": row["area"],
-                    "corner": row["corner"], "garden": row["garden"],
-                    "view": row["view"], "down": row["down"],
-                })
+                reserved_details.append(detail)
     except Exception as e:
         log(f"    [error] zone {z['zone_id']} ({z['city']}/{z['project']}) failed: {e}")
-    return z, reserved_details, plot_count
+    return z, reserved_details, plot_count, all_rows
 
 
 def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
@@ -544,16 +565,18 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
         log(f"[discover] found {len(zones)} zone(s) to harvest")
 
         reserved_details = []
+        all_plots = []
         plot_total = 0
         errors = 0
         t0 = time.time()
 
         for z in zones:
-            z, details, count = _harvest_zone_task(z, sess, log)
+            z, details, count, rows = _harvest_zone_task(z, sess, log)
             if count == 0:
                 errors += 1
             plot_total += count
             reserved_details.extend(details)
+            all_plots.extend(rows)
             log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
                 f"{count} plot(s), {len(details)} reserved")
 
@@ -563,7 +586,7 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
             log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
                 f"errors before trusting this run's numbers")
         log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
-        return reserved_details, plot_total
+        return reserved_details, plot_total, all_plots, errors
     finally:
         sess.close()
 
@@ -610,10 +633,14 @@ def main():
 
     cities = ["المنيا الجديدة"] if args.test else None
 
+    load_dotenv()
+    started_at = datetime.now(timezone.utc)
     previous = load_previous(args.out)
-    reserved_details, plot_total = run(cities=cities, delay=args.delay, workers=args.workers)
+    reserved_details, plot_total, all_plots, zone_errors = run(
+        cities=cities, delay=args.delay, workers=args.workers)
 
     if plot_total == 0:
+        supabase_sync.log_failed_run(started_at, "0 plot rows read")
         print(
             "\n[abort] 0 plot rows read this run — this is almost certainly a "
             "parsing/discovery failure, NOT 'zero plots exist'. Refusing to "
@@ -634,7 +661,17 @@ def main():
             "specific request), NOT a real drop to zero. Refusing to touch "
             "status.json so we don't overwrite real reservation data with this."
         )
+        supabase_sync.log_failed_run(started_at, "booked-filter returned 0 reserved")
         sys.exit(1)
+
+    # Supabase: the live source for the dashboard. A failure here must not
+    # stop status.json / Telegram from working, so it's isolated.
+    try:
+        supabase_sync.sync(all_plots, started_at, zone_errors=zone_errors,
+                           full_run=not args.test)
+    except Exception as e:
+        print(f"[supabase][error] sync failed: {e}")
+        supabase_sync.log_failed_run(started_at, f"sync failed: {e}")
 
     newly_reserved = sorted(current - previous)
     newly_freed = sorted(previous - current)

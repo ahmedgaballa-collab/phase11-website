@@ -1,0 +1,4 @@
+.env
+__pycache__/
+diff_new_reservations.json
+sync.log
