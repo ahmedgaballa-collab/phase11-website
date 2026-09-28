@@ -67,6 +67,7 @@ def build_message(item, today_total, updated_at):
         "━━━━━━━━━━━━━━━\n"
         "عايز تشوف قطعة تناسب ميزانيتك من الباقي؟\n"
         f"🌐 {SITE_URL}\n"
+        f"📊 متابعة الحجوزات لايف: {SITE_URL}dashboard\n"
         f"📲 {AGENT_NAME} — {AGENT_PHONE_DISPLAY}"
     )
 
