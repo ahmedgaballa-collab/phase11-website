@@ -207,6 +207,77 @@ def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
     return summary
 
 
+def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print):
+    """Fast mode: only the booked plots were read this run.
+    - a booked plot that the DB still has as available  -> status change (a new booking)
+    - a plot the DB has as booked, in a zone that was read OK this run, but
+      not in this run's booked list                      -> freed
+    Everything else is left for the next full run."""
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_KEY")
+    if not url or not key:
+        log("[supabase] SUPABASE_URL / SUPABASE_SERVICE_KEY not set — skipping")
+        return None
+
+    t0 = time.time()
+    db = Supa(url, key)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    existing = {r["id"]: r for r in db.select_all("plots", "id,status,is_active,zone_id")}
+
+    current = {}
+    for p in booked_plots:
+        row = build_row(p, now_iso)
+        current[row["id"]] = row
+
+    upserts, changes = [], []
+    for pid, row in current.items():
+        old = existing.get(pid)
+        if old is None:
+            row["first_seen_at"] = now_iso
+            upserts.append(row)
+            changes.append({"plot_id": pid, "type": "new", "from_value": None, "to_value": "unavailable"})
+        elif old["status"] != "unavailable" or not old.get("is_active", True):
+            upserts.append(row)
+            if old["status"] != "unavailable":
+                changes.append({"plot_id": pid, "type": "status",
+                                "from_value": old["status"], "to_value": "unavailable"})
+
+    ok = set(ok_zone_ids)
+    freed = [pid for pid, r in existing.items()
+             if r["status"] == "unavailable" and r.get("is_active", True)
+             and r.get("zone_id") in ok and pid not in current]
+    if len(freed) > 50:
+        log(f"[supabase][guard] {len(freed)} plots would be freed in one fast run — "
+            f"skipping frees (likely a read glitch; the next full run will settle it)")
+        freed = []
+
+    db.upsert("plots", upserts)
+    for i in range(0, len(freed), 200):
+        chunk = freed[i:i + 200]
+        ids = ",".join('"' + x.replace('"', '\\"') + '"' for x in chunk)
+        db.patch("plots", {"id": f"in.({ids})"}, {"status": "available", "updated_at": now_iso})
+        changes += [{"plot_id": x, "type": "status", "from_value": "unavailable", "to_value": "available"}
+                    for x in chunk]
+    db.insert("plot_changes", changes)
+
+    newly = sum(1 for c in changes if c["to_value"] == "unavailable")
+    summary = {
+        "started_at": started_at.isoformat(),
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "status": "ok" if zone_errors == 0 else "warn",
+        "found": len(current),
+        "inserted": sum(1 for c in changes if c["type"] == "new"),
+        "updated": len(upserts),
+        "removed": 0,
+        "errors": zone_errors,
+        "duration_ms": int((time.time() - t0) * 1000),
+        "error_message": "fast",
+    }
+    db.insert("scrape_runs", [summary])
+    log(f"[supabase] fast sync: {len(current)} booked read, {newly} newly booked, {len(freed)} freed")
+    return summary
+
+
 def log_failed_run(started_at, message, log=print):
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_KEY")

@@ -588,7 +588,7 @@ def _paginate_zone(sess, path, soup, zone_id, log=print, plot_type=None):
         total_pages = max(total_pages, max_page_number(soup))
 
 
-def harvest_zone(sess, zone_id, log=print):
+def harvest_zone(sess, zone_id, log=print, booked_only=False):
     """Yields dicts {block, plot, ..., reserved} for every plot in this zone.
 
     Two passes against ViewZone.aspx's own PlotType filter — NUCA's own
@@ -608,10 +608,11 @@ def harvest_zone(sess, zone_id, log=print):
     html = sess.get(path)
     soup = BeautifulSoup(html, "html.parser")
     zname = page_zone_name(soup)
-    for r in _paginate_zone(sess, path, soup, zone_id, log=log):
-        r["reserved"] = False
-        r["page_zone_name"] = zname
-        yield r
+    if not booked_only:
+        for r in _paginate_zone(sess, path, soup, zone_id, log=log):
+            r["reserved"] = False
+            r["page_zone_name"] = zname
+            yield r
 
     # Pass 2: switch to the booked-only filter — same radio button / postback
     # mechanism the site's own UI uses — and page through it the same way.
@@ -629,6 +630,10 @@ def harvest_zone(sess, zone_id, log=print):
     table_present = soup.find(id=re.compile(r"grdPlots$")) is not None
     no_results = "لا يوجد" in html
     if not table_present and not no_results:
+        if booked_only:
+            # fast mode only reads this pass — a bad response must count as a
+            # failed zone, never as "0 booked" (that would look like frees)
+            raise RuntimeError("booked-filter response looks wrong")
         log(f"    [error] zone {zone_id}: booked-filter response looks wrong "
             f"(no grdPlots table, no 'no results' message) — treating as 0 "
             f"booked plots for this zone, but this needs a manual look, not "
@@ -640,7 +645,7 @@ def harvest_zone(sess, zone_id, log=print):
         yield r
 
 
-def _harvest_zone_task(z, sess, log):
+def _harvest_zone_task(z, sess, log, booked_only=False):
     """Runs against the shared Session (one real Chrome browser — launching
     a fresh one per zone would mean relaunching Chrome dozens of times per
     run). Safe because DEFAULT_WORKERS is 1: zones are processed one at a
@@ -649,8 +654,9 @@ def _harvest_zone_task(z, sess, log):
     reserved_details = []
     all_rows = []
     plot_count = 0
+    ok = True
     try:
-        for row in harvest_zone(sess, z["zone_id"], log=log):
+        for row in harvest_zone(sess, z["zone_id"], log=log, booked_only=booked_only):
             plot_count += 1
             city, project = norm(z["city"]), norm(z["project"])
             block, plot = norm(row["block"]), norm(row["plot"])
@@ -668,11 +674,27 @@ def _harvest_zone_task(z, sess, log):
             if row["reserved"]:
                 reserved_details.append(detail)
     except Exception as e:
+        ok = False
         log(f"    [error] zone {z['zone_id']} ({z['city']}/{z['project']}) failed: {e}")
-    return z, reserved_details, plot_count, all_rows
+    return z, reserved_details, plot_count, all_rows, ok
 
 
-def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
+ZONES_CACHE = Path(__file__).with_name("zones_cache.json")
+
+
+def load_zone_cache():
+    try:
+        zones = json.loads(ZONES_CACHE.read_text(encoding="utf-8"))
+        return zones if isinstance(zones, list) and zones else None
+    except Exception:
+        return None
+
+
+def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mode="full"):
+    """mode="full": discover every zone and read available + booked plots.
+    mode="fast": reuse the zone list from the last full run and read ONLY the
+    booked-plots pass of each zone — ~1k plots instead of ~15k, so it can run
+    every few minutes and catch new bookings quickly."""
     if workers != 1:
         log(f"[warn] workers={workers} requested, but the Chrome-driven Session "
             f"is single-browser — forcing workers=1 (one zone at a time).")
@@ -680,19 +702,31 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
 
     sess = Session(delay=delay)
     try:
-        zones = discover_zones(sess, cities=cities, log=log)
-        log(f"[discover] found {len(zones)} zone(s) to harvest")
+        booked_only = mode == "fast"
+        zones = load_zone_cache() if booked_only else None
+        if zones is None:
+            if booked_only:
+                log("[fast] no zone cache yet — discovering zones first")
+            zones = discover_zones(sess, cities=cities, log=log)
+            if not cities and zones:
+                ZONES_CACHE.write_text(json.dumps(zones, ensure_ascii=False), encoding="utf-8")
+        log(f"[discover] {len(zones)} zone(s) to harvest ({mode} mode)")
 
         reserved_details = []
         all_plots = []
         plot_total = 0
         errors = 0
+        ok_zone_ids, failed_cities = set(), set()
         t0 = time.time()
 
         for z in zones:
-            z, details, count, rows = _harvest_zone_task(z, sess, log)
-            if count == 0:
+            z, details, count, rows, ok = _harvest_zone_task(z, sess, log, booked_only=booked_only)
+            if not ok or (count == 0 and not booked_only):
                 errors += 1
+            if ok:
+                ok_zone_ids.add(z["zone_id"])
+            else:
+                failed_cities.add(norm(z["city"]))
             plot_total += count
             reserved_details.extend(details)
             all_plots.extend(rows)
@@ -705,7 +739,7 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print):
             log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
                 f"errors before trusting this run's numbers")
         log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
-        return reserved_details, plot_total, all_plots, errors
+        return reserved_details, plot_total, all_plots, errors, ok_zone_ids, failed_cities, len(zones)
     finally:
         sess.close()
 
@@ -745,7 +779,10 @@ def main():
     ap.add_argument("--test", action="store_true",
                      help="Only crawl one city (المنيا الجديدة) for a quick sanity check")
     ap.add_argument("--out", default="status.json")
-    ap.add_argument("--delay", type=float, default=DEFAULT_DELAY)
+    ap.add_argument("--delay", type=float, default=None)
+    ap.add_argument("--mode", choices=["auto", "fast", "full"], default="auto",
+                    help="auto (default): full run if the last full one is older than "
+                         "FULL_EVERY_HOURS, otherwise a fast booked-only run")
     ap.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
                                              help="zones harvested in parallel (default 2 — raise cautiously)")
     args = ap.parse_args()
@@ -757,9 +794,28 @@ def main():
 
     load_dotenv()
     started_at = datetime.now(timezone.utc)
+    mode = "full" if args.test else args.mode
+    last_full_file = Path(__file__).with_name("last_full.txt")
+    if mode == "auto":
+        every_h = float(os.environ.get("FULL_EVERY_HOURS", "3"))
+        try:
+            last_full = datetime.fromisoformat(last_full_file.read_text().strip())
+            mode = "full" if (started_at - last_full).total_seconds() > every_h * 3600 else "fast"
+        except Exception:
+            mode = "full"
+    delay = args.delay if args.delay is not None else (
+        float(os.environ.get("FAST_DELAY", "0.8")) if mode == "fast" else DEFAULT_DELAY)
+    print(f"[mode] {mode} (delay {delay}s)", flush=True)
+
     previous = load_previous(args.out)
-    reserved_details, plot_total, all_plots, zone_errors = run(
-        cities=cities, delay=args.delay, workers=args.workers)
+    (reserved_details, plot_total, all_plots, zone_errors,
+     ok_zone_ids, failed_cities, zone_count) = run(
+        cities=cities, delay=delay, workers=args.workers, mode=mode)
+
+    if mode == "fast" and zone_count and zone_errors > 0.3 * zone_count:
+        supabase_sync.log_failed_run(started_at, f"fast: {zone_errors}/{zone_count} zones failed")
+        print(f"\n[abort] {zone_errors} of {zone_count} zones failed — not touching anything this run.")
+        sys.exit(1)
 
     if plot_total == 0:
         supabase_sync.log_failed_run(started_at, "0 plot rows read")
@@ -774,6 +830,14 @@ def main():
 
     current_map = {d["key"]: d for d in reserved_details}
     current = set(current_map.keys())
+    # A zone that failed this run must not look like "all its plots got freed"
+    # (and then "newly booked" again next run) — keep last run's bookings for
+    # the cities that had a failed zone.
+    if failed_cities:
+        kept = {k for k in previous if k.split("|", 1)[0] in failed_cities}
+        current |= kept
+        print(f"[warn] kept {len(kept)} previous booking(s) for cities with failed zones: "
+              f"{', '.join(sorted(failed_cities))}")
 
     if len(current) == 0 and plot_total > 500 and len(previous) > 0:
         print(
@@ -789,8 +853,16 @@ def main():
     # Supabase: the live source for the dashboard. A failure here must not
     # stop status.json / Telegram from working, so it's isolated.
     try:
-        supabase_sync.sync(all_plots, started_at, zone_errors=zone_errors,
-                           full_run=not args.test)
+        if mode == "fast":
+            supabase_sync.sync_booked(reserved_details, started_at, ok_zone_ids,
+                                      zone_errors=zone_errors)
+        else:
+            supabase_sync.sync(all_plots, started_at, zone_errors=zone_errors,
+                               full_run=not args.test)
+            # only zones that threw count as failures here (a zone can legitimately
+            # have 0 plots listed), otherwise every run would fall back to "full"
+            if not args.test and not failed_cities:
+                last_full_file.write_text(started_at.isoformat())
     except Exception as e:
         print(f"[supabase][error] sync failed: {e}")
         supabase_sync.log_failed_run(started_at, f"sync failed: {e}")
