@@ -99,6 +99,7 @@ def build_row(p, now_iso):
         "city": p["city"],
         "project": p["project"],
         "zone_id": p["zone_id"],
+        "zone_name": p.get("zone_name") or None,
         "district": p["project"],
         "block": p["block"],
         "plot_number": p["plot"],

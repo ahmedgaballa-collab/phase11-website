@@ -358,6 +358,37 @@ def clean_project_title(container_text, city_name):
     return strip_phase_wrapper(t, city_name)
 
 
+GENERIC_LINK_TEXT = {"", "التفاصيل", "تفاصيل", "عرض", "عرض القطع", "details", "view"}
+
+
+def zone_link_name(a, city_name):
+    """Human name of a zone from its link on the project page (e.g.
+    'الحى الرابع - مجاورة 3'). Falls back to the link's title attribute or the
+    text of its surrounding block when the link itself just says 'التفاصيل'."""
+    cands = [norm(a.get_text()), norm(a.get("title", ""))]
+    node = a
+    for _ in range(3):
+        node = node.parent
+        if node is None:
+            break
+        cands.append(norm(node.get_text()))
+    for c in cands:
+        c = re.sub(r"(التفاصيل|تفاصيل)\s*$", "", c).strip(" -–")
+        c = strip_phase_wrapper(c, city_name)
+        if c and c not in GENERIC_LINK_TEXT and len(c) <= 120:
+            return c
+    return ""
+
+
+def page_zone_name(soup):
+    """Zone title printed on ViewZone.aspx itself, if the page has one."""
+    for el in soup.find_all(id=re.compile(r"(lbl|lit|h)\w*Zone\w*Name|lblZone|lblTitle", re.I)):
+        t = norm(el.get_text())
+        if t and len(t) <= 120:
+            return t
+    return ""
+
+
 def discover_zones(sess, cities=None, log=print):
     """
     Returns a list of dicts: {city, project, zone_id}
@@ -413,19 +444,27 @@ def discover_zones(sess, cities=None, log=print):
             phtml = sess.get(f"/ar/ViewProject.aspx?ID={project_id}")
             psoup = BeautifulSoup(phtml, "html.parser")
 
-            zone_ids = set()
+            zone_names = {}
             for a in psoup.find_all("a", href=re.compile(r"ViewZone\.aspx\?ID=\d+")):
                 m = re.search(r"ID=(\d+)", a["href"])
                 if m:
-                    zone_ids.add(int(m.group(1)))
+                    zid = int(m.group(1))
+                    name = zone_link_name(a, city_name)
+                    # keep the most descriptive text seen for this zone
+                    if len(name) > len(zone_names.get(zid, "")):
+                        zone_names[zid] = name
+                    else:
+                        zone_names.setdefault(zid, "")
 
             project_bare = strip_phase_wrapper(project_title, city_name)
-            for zid in zone_ids:
+            for zid, zname in zone_names.items():
                 zones.append({
                     "city": city_name,
                     "project": project_bare,
                     "zone_id": zid,
+                    "zone_name": zname,
                 })
+                log(f"    [zone] {zid}: {zname or '(no name on project page)'}")
 
     return zones
 
@@ -568,8 +607,10 @@ def harvest_zone(sess, zone_id, log=print):
     # Pass 1: available (default) filter — nothing here is finalized yet.
     html = sess.get(path)
     soup = BeautifulSoup(html, "html.parser")
+    zname = page_zone_name(soup)
     for r in _paginate_zone(sess, path, soup, zone_id, log=log):
         r["reserved"] = False
+        r["page_zone_name"] = zname
         yield r
 
     # Pass 2: switch to the booked-only filter — same radio button / postback
@@ -617,6 +658,7 @@ def _harvest_zone_task(z, sess, log):
             detail = {
                 "key": key, "city": city, "project": project,
                 "zone_id": z["zone_id"],
+                "zone_name": z.get("zone_name") or row.get("page_zone_name") or "",
                 "block": block, "plot": plot, "area": row["area"],
                 "corner": row["corner"], "garden": row["garden"],
                 "view": row["view"], "down": row["down"],

@@ -187,6 +187,23 @@
     font-family:'Tajawal',sans-serif; font-size:13.5px; padding:9px 10px; border-radius:8px; outline:0; width:100%;
   }
   select:focus, .num-input:focus{border-color:var(--gold);}
+  .multi{position:relative;}
+  .multi-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:start;
+    background:var(--bg-field);border:1px solid var(--line);color:var(--paper);font-family:'Tajawal',sans-serif;
+    font-size:13.5px;padding:9px 10px;border-radius:8px;cursor:pointer;}
+  .multi-btn.has-value{border-color:var(--gold);}
+  .multi-btn span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .multi-chev{color:var(--paper-faint);font-size:11px;}
+  .multi-pop{position:absolute;z-index:30;top:calc(100% + 6px);inset-inline:0;min-width:220px;background:var(--bg-elevated);
+    border:1px solid var(--line);border-radius:10px;box-shadow:0 18px 40px -18px rgba(0,0,0,.45);overflow:hidden;}
+  .multi-list{max-height:280px;overflow:auto;padding:6px;}
+  .multi-opt{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:13.5px;color:var(--paper);}
+  .multi-opt:hover{background:var(--bg-field);}
+  .multi-opt input{accent-color:var(--gold);width:16px;height:16px;margin:0;}
+  .multi-foot{display:flex;justify-content:space-between;gap:8px;padding:8px;border-top:1px solid var(--line);}
+  .multi-foot button{font-family:'Tajawal',sans-serif;font-size:12.5px;border-radius:999px;padding:6px 14px;cursor:pointer;
+    border:1px solid var(--line);background:none;color:var(--paper-dim);}
+  .multi-foot #cityDone{background:var(--gold);border-color:var(--gold);color:#1a1206;font-weight:700;}
   .range-row{display:flex; gap:8px;}
   .toggles{display:flex; gap:8px; flex-wrap:wrap;}
   .toggle-chip{
@@ -437,8 +454,14 @@
     </div>
     <div class="filters-body" id="filtersBody">
       <div class="field">
-        <label for="citySelect" data-i18n="cityLabel">المدينة</label>
-        <select id="citySelect"></select>
+        <label for="cityBtn" data-i18n="cityLabel">المدينة</label>
+        <div class="multi" id="cityMulti">
+          <button type="button" class="multi-btn" id="cityBtn" aria-haspopup="listbox" aria-expanded="false"><span id="cityBtnText"></span><span class="multi-chev">▾</span></button>
+          <div class="multi-pop" id="cityPop" hidden>
+            <div class="multi-list" id="cityList" role="listbox" aria-multiselectable="true"></div>
+            <div class="multi-foot"><button type="button" id="cityClear"></button><button type="button" id="cityDone"></button></div>
+          </div>
+        </div>
       </div>
       <div class="field">
         <label for="projectSelect" data-i18n="projectLabel">المشروع</label>
@@ -640,7 +663,7 @@ const R_CITY=0,R_PROJ=1,R_AREA=2,R_BLOCK=3,R_PLOT=4,R_SQM=5,R_PM=6,R_TOTAL=7,R_D
 
 const state = {
   lang: 'ar',
-  budget: null, city:'all', project:'all', areaMin:null, areaMax:null,
+  budget: null, city:'all', cities:new Set(), project:'all', areaMin:null, areaMax:null,
   corner:false, garden:false, view:false, sort:'match', mode:'cards', visible:24, wishlistOnly:false,
   statusFilter:'all'
 };
@@ -789,13 +812,24 @@ function buildPresets(){
   });
 }
 
-function populateSelects(){
+function cityBtnLabel(){
+  const d = t(), n = state.cities.size;
+  if(!n) return d.allCities;
+  if(n === 1) return DB.cities[[...state.cities][0]];
+  return state.lang === 'en' ? `${n} cities` : `${n} مدن`;
+}
+function renderCityMulti(){
   const d = t();
-  const citySel = document.getElementById('citySelect');
-  const prevCity = state.city;
-  citySel.innerHTML = `<option value="all">${d.allCities}</option>` +
-    DB.cities.map((c,i)=>`<option value="${i}">${c}</option>`).join('');
-  citySel.value = prevCity;
+  document.getElementById('cityBtnText').textContent = cityBtnLabel();
+  document.getElementById('cityBtn').classList.toggle('has-value', state.cities.size > 0);
+  document.getElementById('cityClear').textContent = state.lang === 'en' ? 'Clear' : 'مسح الاختيار';
+  document.getElementById('cityDone').textContent = state.lang === 'en' ? 'Done' : 'تم';
+  const order = DB.cities.map((c,i)=>({c,i})).sort((a,b)=>a.c.localeCompare(b.c,'ar'));
+  document.getElementById('cityList').innerHTML = order.map(({c,i})=>
+    `<label class="multi-opt"><input type="checkbox" value="${i}" ${state.cities.has(i)?'checked':''}><span>${c}</span></label>`).join('');
+}
+function populateSelects(){
+  renderCityMulti();
   updateProjectSelect();
 }
 
@@ -804,8 +838,8 @@ function updateProjectSelect(){
   const projSel = document.getElementById('projectSelect');
   const prevProject = state.project;
   let idxs;
-  if(state.city==='all'){ idxs = DB.projects.map((_,i)=>i); }
-  else { idxs = DB.cityProjects[state.city] || []; }
+  if(!state.cities.size){ idxs = DB.projects.map((_,i)=>i); }
+  else { idxs = [...new Set([...state.cities].flatMap(c=>DB.cityProjects[c] || []))]; }
   const opts = idxs.map(i=>DB.projects[i]).map((name,pos)=>({name, idx: idxs[pos]}))
     .sort((a,b)=>a.name.localeCompare(b.name,'ar'));
   projSel.innerHTML = `<option value="all">${d.allProjects}</option>` +
@@ -817,7 +851,7 @@ function updateProjectSelect(){
 
 function matches(row){
   if(state.budget!=null && row[R_DOWN] > state.budget) return false;
-  if(state.city!=='all' && row[R_CITY] !== state.city) return false;
+  if(state.cities.size && !state.cities.has(row[R_CITY])) return false;
   if(state.project!=='all' && row[R_PROJ] !== state.project) return false;
   if(state.areaMin!=null && row[R_SQM] < state.areaMin) return false;
   if(state.areaMax!=null && row[R_SQM] > state.areaMax) return false;
@@ -1021,10 +1055,25 @@ function wireEvents(){
     render();
   });
 
-  document.getElementById('citySelect').addEventListener('change', e=>{
-    state.city = e.target.value==='all' ? 'all' : parseInt(e.target.value,10);
-    updateProjectSelect(); state.visible=24; render();
-  });
+  (function(){
+    const btn = document.getElementById('cityBtn'), pop = document.getElementById('cityPop');
+    const open = v => { pop.hidden = !v; btn.setAttribute('aria-expanded', v); };
+    btn.addEventListener('click', e => { e.stopPropagation(); open(pop.hidden); });
+    pop.addEventListener('click', e => e.stopPropagation());
+    document.addEventListener('click', () => open(false));
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') open(false); });
+    document.getElementById('cityList').addEventListener('change', e => {
+      const i = parseInt(e.target.value, 10);
+      e.target.checked ? state.cities.add(i) : state.cities.delete(i);
+      document.getElementById('cityBtnText').textContent = cityBtnLabel();
+      btn.classList.toggle('has-value', state.cities.size > 0);
+      updateProjectSelect(); state.visible = 24; render();
+    });
+    document.getElementById('cityClear').addEventListener('click', () => {
+      state.cities.clear(); renderCityMulti(); updateProjectSelect(); state.visible = 24; render();
+    });
+    document.getElementById('cityDone').addEventListener('click', () => open(false));
+  })();
   document.getElementById('projectSelect').addEventListener('change', e=>{
     state.project = e.target.value==='all' ? 'all' : parseInt(e.target.value,10);
     state.visible=24; render();
@@ -1052,13 +1101,13 @@ function wireEvents(){
   });
 
   document.getElementById('clearAll').addEventListener('click', ()=>{
-    state.budget=null; state.city='all'; state.project='all'; state.areaMin=null; state.areaMax=null;
+    state.budget=null; state.city='all'; state.cities.clear(); state.project='all'; state.areaMin=null; state.areaMax=null;
     state.corner=false; state.garden=false; state.view=false; state.sort='match'; state.visible=24;
     budgetInput.value=''; document.getElementById('areaMin').value=''; document.getElementById('areaMax').value='';
     document.getElementById('sortSelect').value='match';
     document.querySelectorAll('.toggle-chip').forEach(c=>c.classList.remove('active'));
     document.querySelectorAll('.preset-chip').forEach(c=>c.classList.remove('active'));
-    document.getElementById('citySelect').value='all';
+    renderCityMulti();
     state.statusFilter='all';
     document.querySelectorAll('#statusToggle button').forEach(b=>b.classList.toggle('active', b.dataset.status==='all'));
     updateProjectSelect(); render();
