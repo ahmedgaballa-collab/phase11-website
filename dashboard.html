@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>متابعة المرحلة 11 | أحمد جاب الله</title>
+<meta name="description" content="متابعة لحظية لحجوزات أراضي المرحلة 11 — بيت الوطن">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F7FA; --surface:#FFFFFF; --ink:#0B1F3F; --ink-2:#4A5873; --ink-3:#8793A8;
+  --line:#E4E8EF; --track:#EDF0F5; --brand:#0B1F3F; --gold:#B8912F; --gold-soft:#F6EFDC;
+  --booked:#1E3A6E; --avail:#DCE3EE; --good:#1F8A4C; --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1220; --surface:#121B2E; --ink:#EEF2F8; --ink-2:#B3BED1; --ink-3:#7F8BA3;
+    --line:#233049; --track:#1B2740; --brand:#EEF2F8; --gold:#D9B45A; --gold-soft:#2A2616;
+    --booked:#7FA3E6; --avail:#2A3858; --good:#4FC27F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1220; --surface:#121B2E; --ink:#EEF2F8; --ink-2:#B3BED1; --ink-3:#7F8BA3;
+  --line:#233049; --track:#1B2740; --brand:#EEF2F8; --gold:#D9B45A; --gold-soft:#2A2616;
+  --booked:#7FA3E6; --avail:#2A3858; --good:#4FC27F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Tajawal',system-ui,sans-serif;
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+header{background:var(--surface);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:14px;padding:14px 0;flex-wrap:wrap}
+.top img{height:44px;width:auto}
+.top h1{font-size:20px;margin:0;font-weight:800}
+.top .sub{color:var(--ink-3);font-size:13px}
+.live{margin-inline-start:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);
+  background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
+.dot.on{background:var(--good);box-shadow:0 0 0 0 var(--good);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(31,138,76,.5)}70%{box-shadow:0 0 0 8px rgba(31,138,76,0)}100%{box-shadow:0 0 0 0 rgba(31,138,76,0)}}
+main.wrap{padding:22px 16px 48px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.kpi .lbl{color:var(--ink-2);font-size:14px;font-weight:500}
+.kpi .num{font-size:30px;font-weight:800;letter-spacing:-.5px;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .foot{color:var(--ink-3);font-size:13px;margin-top:2px}
+.kpi.hero{border-color:var(--gold);background:linear-gradient(0deg,var(--surface),var(--surface)) padding-box}
+.kpi.hero .num{color:var(--gold)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.meter{margin-top:10px}
+.bar{height:10px;border-radius:999px;background:var(--track);overflow:hidden;display:flex}
+.bar i{display:block;height:100%;background:var(--booked);border-radius:999px}
+.meter .row{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2);margin-top:6px}
+h2{font-size:17px;margin:28px 0 10px;font-weight:800;display:flex;align-items:center;gap:10px}
+h2 small{font-weight:500;color:var(--ink-3);font-size:13px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tools input,.tools select{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;padding:8px 12px;min-width:0}
+.tools input{flex:1 1 220px}
+table{width:100%;border-collapse:collapse}
+.tbl{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:13px;color:var(--ink-3);font-weight:500;background:var(--surface);cursor:pointer;user-select:none;white-space:nowrap}
+th[aria-sort="descending"]::after{content:" ↓"} th[aria-sort="ascending"]::after{content:" ↑"}
+td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.city{cursor:pointer} tr.city:hover td{background:var(--bg)}
+tr.city td:first-child{font-weight:700}
+tr.city td:first-child::before{content:"◂";display:inline-block;margin-inline-end:8px;color:var(--ink-3);transition:transform .15s}
+tr.city.open td:first-child::before{transform:rotate(-90deg)}
+tr.proj td{background:var(--bg);font-size:14px} tr.proj td:first-child{padding-inline-start:34px;font-weight:600}
+tr.zone td{background:var(--bg);font-size:13px;color:var(--ink-2)} tr.zone td:first-child{padding-inline-start:56px}
+.pct{display:flex;align-items:center;gap:8px;min-width:140px}
+.pct .bar{flex:1;height:8px}
+.pct span{font-size:13px;color:var(--ink-2);min-width:42px;text-align:left;font-variant-numeric:tabular-nums}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--surface);font-size:13px;padding:6px 10px;
+  border-radius:8px;opacity:0;transition:opacity .1s;z-index:10;white-space:nowrap}
+.today li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.today ul{list-style:none;margin:0;padding:0}
+.today li:last-child{border-bottom:0}
+.tag{font-size:12px;border-radius:999px;padding:2px 8px;background:var(--gold-soft);color:var(--gold);font-weight:700;white-space:nowrap}
+.today .t{color:var(--ink-3);font-size:13px;margin-inline-start:auto;white-space:nowrap}
+.empty{color:var(--ink-3);padding:14px 0;text-align:center}
+.err{background:#FDECEC;color:#8A1F1F;border:1px solid #F3C4C4;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:none}
+footer.wrap{color:var(--ink-3);font-size:13px;text-align:center;padding:8px 16px 36px}
+footer a{color:var(--ink-2)}
+.hide-sm{}
+@media (max-width:760px){
+  .kpis{grid-template-columns:1fr 1fr} .split{grid-template-columns:1fr}
+  .kpi .num{font-size:24px} .hide-sm{display:none} .pct{min-width:90px}
+  th,td{padding:9px 8px} .live{margin-inline-start:0}
+}
+</style>
+</head>
+<body>
+<header><div class="wrap top">
+  <img src="logo.png" alt="AG">
+  <div><h1>متابعة حجوزات المرحلة 11</h1><div class="sub">بيت الوطن — كل المدن</div></div>
+  <div class="live" title="البيانات بتتحدث تلقائيًا"><span class="dot" id="dot"></span><span id="updated">جاري التحميل…</span></div>
+</div></header>
+
+<main class="wrap">
+  <div class="err" id="err"></div>
+
+  <section class="kpis">
+    <div class="card kpi"><div class="lbl">إجمالي القطع</div><div class="num" id="k-total">—</div><div class="foot">في كل المدن</div></div>
+    <div class="card kpi"><div class="lbl">المحجوز</div><div class="num" id="k-booked">—</div><div class="foot" id="k-booked-pct">&nbsp;</div></div>
+    <div class="card kpi"><div class="lbl">المتاح</div><div class="num" id="k-avail">—</div><div class="foot">قطعة لسه متاحة</div></div>
+    <div class="card kpi hero"><div class="lbl">اتحجز النهارده</div><div class="num" id="k-today">—</div><div class="foot">بتوقيت القاهرة</div></div>
+  </section>
+
+  <section class="split">
+    <div class="card kpi"><div class="lbl">مقدم صغير <small style="color:var(--ink-3)">(لحد 40 ألف دولار)</small></div>
+      <div class="meter"><div class="bar"><i id="m-low" style="width:0"></i></div>
+      <div class="row"><span id="m-low-b">—</span><span id="m-low-a">—</span></div></div></div>
+    <div class="card kpi"><div class="lbl">مقدم كبير <small style="color:var(--ink-3)">(أكتر من 40 ألف دولار)</small></div>
+      <div class="meter"><div class="bar"><i id="m-big" style="width:0"></i></div>
+      <div class="row"><span id="m-big-b">—</span><span id="m-big-a">—</span></div></div></div>
+  </section>
+
+  <h2>حسب المدينة <small>دوس على المدينة عشان تشوف المشاريع والمناطق</small></h2>
+  <div class="tools">
+    <input id="q" type="search" placeholder="ابحث باسم المدينة أو المشروع…" aria-label="بحث">
+    <select id="sortSel" aria-label="ترتيب">
+      <option value="total_plots">الأكثر قطعًا</option>
+      <option value="available">الأكثر متاحًا</option>
+      <option value="booked">الأكثر حجزًا</option>
+      <option value="pct">أعلى نسبة حجز</option>
+      <option value="city">أبجدي</option>
+    </select>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr>
+      <th data-k="city">المدينة</th>
+      <th data-k="total_plots" class="hide-sm">الإجمالي</th>
+      <th data-k="booked">محجوز</th>
+      <th data-k="available">متاح</th>
+      <th data-k="pct">نسبة الحجز</th>
+    </tr></thead>
+    <tbody id="cities"><tr><td colspan="5" class="empty">جاري التحميل…</td></tr></tbody>
+  </table></div>
+
+  <h2>حجوزات النهارده <small id="today-count"></small></h2>
+  <div class="card today"><ul id="today"><li class="empty">جاري التحميل…</li></ul></div>
+</main>
+
+<footer class="wrap">
+  البيانات من موقع هيئة المجتمعات العمرانية الجديدة وبتتحدث تلقائيًا.<br>
+  أحمد جاب الله — مستشار عقاري · <a href="tel:01009566779">01009566779</a> · <a href="/">ابحث عن قطعتك</a>
+</footer>
+<div class="tip" id="tip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://mupmkecxgnickmbdvlno.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
+
+const $ = id => document.getElementById(id);
+const fmt = n => (n == null ? "—" : Number(n).toLocaleString("en-US"));
+const pctOf = (b, t) => (t ? (100 * b / t) : 0);
+const pctTxt = p => (p >= 10 ? p.toFixed(0) : p.toFixed(1)) + "%";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const cairo = (iso, opts) => new Date(iso).toLocaleString("ar-EG", Object.assign({timeZone:"Africa/Cairo"}, opts));
+
+const REST = SUPABASE_URL + "/rest/v1/";
+async function get(path){
+  const r = await fetch(REST + path, {headers:{apikey:SUPABASE_ANON, Authorization:"Bearer " + SUPABASE_ANON}});
+  if (!r.ok) throw new Error(path + " → " + r.status);
+  return r.json();
+}
+
+let state = {cities:[], projects:[], zones:[], open:new Set(), sortK:"total_plots", dir:-1, q:""};
+
+function bar(b, t){
+  const p = pctOf(b, t);
+  return `<div class="pct" data-tip="${fmt(b)} محجوز من ${fmt(t)}"><div class="bar"><i style="width:${Math.min(100,p)}%"></i></div><span>${pctTxt(p)}</span></div>`;
+}
+
+function renderCities(){
+  const q = state.q.trim();
+  const projByCity = {}, zoneByProj = {};
+  state.projects.forEach(p => (projByCity[p.city] ??= []).push(p));
+  state.zones.forEach(z => (zoneByProj[z.city + "|" + z.project] ??= []).push(z));
+  let rows = state.cities.map(c => ({...c, pct: pctOf(c.booked, c.total_plots)}));
+  if (q) rows = rows.filter(c => c.city.includes(q) || (projByCity[c.city]||[]).some(p => (p.project||"").includes(q)));
+  const k = state.sortK, d = state.dir;
+  rows.sort((a,b) => k === "city" ? a.city.localeCompare(b.city, "ar") * (d === -1 ? 1 : -1) : (b[k] - a[k]) * (d === -1 ? 1 : -1));
+  document.querySelectorAll("th[data-k]").forEach(th => th.removeAttribute("aria-sort"));
+  const th = document.querySelector(`th[data-k="${k}"]`); if (th) th.setAttribute("aria-sort", d === -1 ? "descending" : "ascending");
+  if (!rows.length){ $("cities").innerHTML = `<tr><td colspan="5" class="empty">مفيش نتايج</td></tr>`; return; }
+  let html = "";
+  for (const c of rows){
+    const open = state.open.has(c.city) || (q && !c.city.includes(q));
+    html += `<tr class="city${open ? " open" : ""}" data-city="${esc(c.city)}">
+      <td>${esc(c.city)}</td><td class="n hide-sm">${fmt(c.total_plots)}</td><td class="n">${fmt(c.booked)}</td>
+      <td class="n">${fmt(c.available)}</td><td>${bar(c.booked, c.total_plots)}</td></tr>`;
+    if (!open) continue;
+    const projs = (projByCity[c.city] || []).filter(p => !q || c.city.includes(q) || (p.project||"").includes(q))
+      .sort((a,b) => b.total_plots - a.total_plots);
+    for (const p of projs){
+      html += `<tr class="proj"><td>${esc(p.project || "—")}</td><td class="n hide-sm">${fmt(p.total_plots)}</td>
+        <td class="n">${fmt(p.booked)}</td><td class="n">${fmt(p.available)}</td><td>${bar(p.booked, p.total_plots)}</td></tr>`;
+      const zs = (zoneByProj[c.city + "|" + p.project] || []).sort((a,b) => b.total_plots - a.total_plots);
+      if (zs.length > 1) for (const z of zs){
+        html += `<tr class="zone"><td>منطقة ${esc(z.zone_name || z.zone_id)}</td><td class="n hide-sm">${fmt(z.total_plots)}</td>
+          <td class="n">${fmt(z.booked)}</td><td class="n">${fmt(z.available)}</td><td>${bar(z.booked, z.total_plots)}</td></tr>`;
+      }
+    }
+  }
+  $("cities").innerHTML = html;
+}
+
+function renderToday(list){
+  $("today-count").textContent = list.length ? `(${fmt(list.length)} قطعة)` : "";
+  if (!list.length){ $("today").innerHTML = `<li class="empty">لسه مفيش حجوزات جديدة النهارده</li>`; return; }
+  $("today").innerHTML = list.slice(0, 100).map(b => `<li>
+    <span class="tag">${b.down_payment_type === "big" ? "مقدم كبير" : b.down_payment_type === "low" ? "مقدم صغير" : "حجز"}</span>
+    <div><b>${esc(b.city)}</b> — ${esc(b.project || "")}<br>
+    <span style="color:var(--ink-2);font-size:13px">بلوك ${esc(b.block)} · قطعة ${esc(b.plot_number)}${b.area_sqm ? " · " + fmt(Math.round(b.area_sqm)) + " م²" : ""}${b.down_payment ? " · مقدم $" + fmt(Math.round(b.down_payment)) : ""}</span></div>
+    <span class="t">${cairo(b.booked_at, {hour:"numeric", minute:"2-digit"})}</span></li>`).join("");
+}
+
+async function load(){
+  try {
+    const [ov, cities, projects, zones, today, runs] = await Promise.all([
+      get("v_stats_overall"), get("v_stats_by_city"), get("v_stats_by_project"),
+      get("v_stats_by_zone"), get("v_today_bookings?limit=200"),
+      get("scrape_runs?select=finished_at,status&status=neq.fail&order=id.desc&limit=1"),
+    ]);
+    const o = ov[0] || {};
+    $("k-total").textContent = fmt(o.total_plots);
+    $("k-booked").textContent = fmt(o.booked);
+    $("k-booked-pct").textContent = o.total_plots ? pctTxt(pctOf(o.booked, o.total_plots)) + " من الإجمالي" : "";
+    $("k-avail").textContent = fmt(o.available);
+    $("k-today").textContent = fmt(today.length);
+    for (const [key, tot, bk] of [["low", o.low_dp_total, o.low_dp_booked], ["big", o.big_dp_total, o.big_dp_booked]]){
+      $("m-" + key).style.width = Math.min(100, pctOf(bk, tot)) + "%";
+      $("m-" + key + "-b").textContent = `${fmt(bk)} محجوز (${pctTxt(pctOf(bk, tot))})`;
+      $("m-" + key + "-a").textContent = `${fmt((tot || 0) - (bk || 0))} متاح من ${fmt(tot)}`;
+    }
+    state.cities = cities; state.projects = projects; state.zones = zones;
+    renderCities(); renderToday(today);
+    const last = runs[0]?.finished_at || o.last_update;
+    $("updated").textContent = last ? "آخر تحديث: " + cairo(last, {day:"numeric", month:"short", hour:"numeric", minute:"2-digit"}) : "مفيش بيانات لسه";
+    $("err").style.display = "none";
+  } catch (e) {
+    console.error(e);
+    $("err").textContent = "حصلت مشكلة في تحميل البيانات — هنحاول تاني تلقائيًا.";
+    $("err").style.display = "block";
+  }
+}
+
+// interactions
+$("cities").addEventListener("click", e => {
+  const tr = e.target.closest("tr.city"); if (!tr) return;
+  const c = tr.dataset.city; state.open.has(c) ? state.open.delete(c) : state.open.add(c); renderCities();
+});
+document.querySelectorAll("th[data-k]").forEach(th => th.addEventListener("click", () => {
+  const k = th.dataset.k; state.dir = state.sortK === k ? -state.dir : (k === "city" ? -1 : -1); state.sortK = k;
+  $("sortSel").value = k; renderCities();
+}));
+$("sortSel").addEventListener("change", e => { state.sortK = e.target.value; state.dir = -1; renderCities(); });
+$("q").addEventListener("input", e => { state.q = e.target.value; renderCities(); });
+const tip = $("tip");
+document.addEventListener("mousemove", e => {
+  const t = e.target.closest("[data-tip]");
+  if (!t){ tip.style.opacity = 0; return; }
+  tip.textContent = t.dataset.tip; tip.style.opacity = 1;
+  tip.style.left = Math.min(innerWidth - tip.offsetWidth - 8, e.clientX + 12) + "px"; tip.style.top = (e.clientY + 14) + "px";
+});
+
+// live updates: Supabase Realtime, with a polling fallback
+let timer;
+const refreshSoon = () => { clearTimeout(timer); timer = setTimeout(load, 1500); };
+load();
+setInterval(load, 5 * 60 * 1000);
+try {
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  sb.channel("live").on("postgres_changes", {event:"*", schema:"public", table:"plot_changes"}, refreshSoon)
+    .on("postgres_changes", {event:"*", schema:"public", table:"plots"}, refreshSoon)
+    .subscribe(s => $("dot").classList.toggle("on", s === "SUBSCRIBED"));
+} catch (e) { console.warn("realtime off", e); }
+</script>
+</body>
+</html>

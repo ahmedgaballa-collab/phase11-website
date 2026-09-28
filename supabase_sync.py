@@ -85,10 +85,17 @@ class Supa:
             headers={**self.h, "Prefer": "return=minimal"}, timeout=60))
 
 
+def plot_id(p):
+    # city|block|plot is NOT unique: two areas in the same city can reuse the
+    # same block/plot numbers (seen 2026-09-28: 315 rows -> 297 ids). The NUCA
+    # zone id makes it unique.
+    return f"{p['city']}|{p['zone_id']}|{p['block']}|{p['plot']}"
+
+
 def build_row(p, now_iso):
     status = "unavailable" if p["reserved"] else "available"
     row = {
-        "id": p["key"],
+        "id": plot_id(p),
         "city": p["city"],
         "project": p["project"],
         "zone_id": p["zone_id"],
@@ -128,10 +135,19 @@ def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
     existing = {r["id"]: r for r in db.select_all("plots", "id,status,is_active,content_hash")}
     first_sync = len(existing) == 0
 
-    # de-dup by key (same plot can't appear twice; keep last seen)
-    current = {}
+    current, dupes = {}, []
     for p in all_plots:
-        current[p["key"]] = build_row(p, now_iso)
+        row = build_row(p, now_iso)
+        if row["id"] in current:
+            dupes.append(row["id"])
+        current[row["id"]] = row
+    if dupes:
+        log(f"[supabase][warn] {len(dupes)} duplicate plot rows in this run "
+            f"(same zone/block/plot seen twice), e.g. {dupes[:3]}")
+
+    # Bootstrap: DB is empty or much smaller than this run (e.g. only a --test
+    # city was synced before) — don't flood plot_changes with "new" rows.
+    bootstrap = len(existing) < 0.5 * max(len(current), 1)
 
     new_rows, changed_rows, changes = [], [], []
     for pid, row in current.items():
@@ -139,10 +155,10 @@ def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
         if old is None:
             row["first_seen_at"] = now_iso
             new_rows.append(row)
-            if not first_sync:
+            # A plot we see for the first time is NOT a booking we observed —
+            # never log it as a status change (would inflate "booked today").
+            if not bootstrap:
                 changes.append({"plot_id": pid, "type": "new", "from_value": None, "to_value": row["status"]})
-                if row["status"] == "unavailable":
-                    changes.append({"plot_id": pid, "type": "status", "from_value": None, "to_value": "unavailable"})
             continue
         if old["content_hash"] != row["content_hash"] or not old.get("is_active", True):
             changed_rows.append(row)
@@ -186,7 +202,7 @@ def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
     db.insert("scrape_runs", [summary])
     log(f"[supabase] synced: {len(current)} plots, {len(new_rows)} new, "
         f"{len(changed_rows)} updated, {newly_booked} newly booked, "
-        f"{len(removed_ids)} removed" + (" (first sync — no change log)" if first_sync else ""))
+        f"{len(removed_ids)} removed" + (" (bootstrap — new plots not logged)" if bootstrap else ""))
     return summary
 
 

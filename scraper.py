@@ -73,6 +73,10 @@ def load_dotenv(path=None):
         k, v = line.split("=", 1)
         os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
+
+# Load .env BEFORE the constants below read os.environ (CHROME_PROFILE_DIR etc.)
+load_dotenv()
+
 BASE = "https://lands.nuca.gov.eg"
 PHASE_MARKER = "المرحلة الحادية عشر"
 # The site's REAL signal for "is this project part of the currently open
@@ -242,6 +246,9 @@ class Session:
                 channel="chrome",
                 headless=CHROME_HEADLESS,
                 args=["--lang=ar-EG"],
+                # Playwright passes --disable-extensions by default, which would
+                # silently drop VeePN — keep extensions enabled.
+                ignore_default_args=["--disable-extensions"],
             )
         except Exception:
             self._pw.stop()
@@ -249,20 +256,49 @@ class Session:
         self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         # Real navigation, not fetch() — lets the site's own page-load checks
         # (and the VeePN-routed connection itself) run once, up front.
-        self.page.goto(BASE + "/ar/Home.aspx", timeout=TIMEOUT * 1000)
+        # VeePN needs a few seconds after Chrome starts before it routes traffic.
+        time.sleep(float(os.environ.get("VPN_WARMUP_SECONDS", "8")))
+        self._open_home()
+
+    def _open_home(self):
+        last = None
+        for attempt in range(3):
+            try:
+                self.page.goto(BASE + "/ar/Home.aspx", timeout=TIMEOUT * 1000)
+                print(f"[session] opened {self.page.url}", flush=True)
+                if "lands.nuca.gov.eg" in self.page.url:
+                    return
+                last = f"landed on {self.page.url}"
+            except Exception as e:
+                last = str(e).splitlines()[0]
+            print(f"[session] home page not reachable yet ({last}) — retrying", flush=True)
+            time.sleep(10)
+        raise RuntimeError(
+            f"Could not open lands.nuca.gov.eg ({last}). Is VeePN connected in "
+            f"the Chrome window the script opened?")
 
     def _request(self, method, path, data=None):
         time.sleep(self.delay)
         body = urlencode(data) if data is not None else None
-        arg = {"url": BASE + path, "method": method, "body": body, "timeoutMs": TIMEOUT * 1000}
+        # Relative URL: always same-origin as the page actually loaded (the
+        # site may redirect http/https or www), so fetch() never hits CORS.
+        arg = {"url": path, "method": method, "body": body, "timeoutMs": TIMEOUT * 1000}
         result = self.page.evaluate(_FETCH_JS, arg)
         if not result["ok"]:
             # One retry, with a real pause first — mirrors the old requests-based
             # retry: a slow/busy server benefits from backing off, not hammering.
             time.sleep(3.0)
             result = self.page.evaluate(_FETCH_JS, arg)
-            if not result["ok"]:
-                raise RuntimeError(f"fetch failed for {path}: {result['error']}")
+        if not result["ok"] and method == "GET":
+            # Fallback: a real navigation instead of fetch().
+            try:
+                self.page.goto(BASE + path, timeout=TIMEOUT * 1000)
+                result = {"ok": True, "status": 200, "text": self.page.content()}
+            except Exception as e:
+                result = {"ok": False, "error": f"{result['error']} / goto: {str(e).splitlines()[0]}"}
+        if not result["ok"]:
+            raise RuntimeError(f"fetch failed for {path}: {result['error']} "
+                               f"(page is at {self.page.url})")
         if result["status"] >= 400:
             raise RuntimeError(f"HTTP {result['status']} for {path}")
         return result["text"]
@@ -395,10 +431,31 @@ def discover_zones(sess, cities=None, log=print):
 
 
 def parse_hidden_fields(soup):
+    """Everything a real browser would post back for this form: all hidden
+    inputs (incl. __VIEWSTATEENCRYPTED / __LASTFOCUS when present), text
+    boxes, and the checked radio/checkbox values. Posting only the 3 core
+    ViewState fields made ASP.NET reject the pager postback (page 2+ came
+    back with no rows — seen 2026-09-28)."""
     fields = {}
+    for inp in soup.find_all("input"):
+        name = inp.get("name")
+        if not name:
+            continue
+        typ = (inp.get("type") or "text").lower()
+        if typ in ("submit", "button", "image", "reset", "file"):
+            continue
+        if typ in ("radio", "checkbox") and not inp.has_attr("checked"):
+            continue
+        fields[name] = inp.get("value", "on" if typ in ("radio", "checkbox") else "")
+    for sel in soup.find_all("select"):
+        name = sel.get("name")
+        if not name:
+            continue
+        opt = sel.find("option", selected=True) or sel.find("option")
+        fields[name] = opt.get("value", opt.get_text()) if opt else ""
     for name in ("__VIEWSTATE", "__VIEWSTATEGENERATOR", "__EVENTVALIDATION"):
-        inp = soup.find("input", {"name": name})
-        fields[name] = inp["value"] if inp else ""
+        fields.setdefault(name, "")
+    fields.setdefault("__LASTFOCUS", "")
     return fields
 
 
@@ -416,7 +473,15 @@ def parse_plots_table(soup):
         return []
     rows = []
     for tr in table.find_all("tr")[1:]:  # skip header row
-        cells = [norm(td.get_text()) for td in tr.find_all("td")]
+        # The GridView pager is a row whose single cell holds a NESTED table
+        # of page links (1 2 3 ... 10). A recursive td search used to count
+        # those links as 10+ cells and turn the pager into a fake plot
+        # (block "12345678910") on every page — seen 2026-09-28.
+        if tr.find("table") is not None:
+            continue
+        if tr.find_parent("table") is not table:
+            continue  # a row that belongs to some nested table
+        cells = [norm(td.get_text()) for td in tr.find_all("td", recursive=False)]
         if len(cells) < 10:
             continue  # pager row or malformed row — skip, don't guess
         block, plot, area = cells[0], cells[1], cells[2]
@@ -455,7 +520,9 @@ def _paginate_zone(sess, path, soup, zone_id, log=print, plot_type=None):
         return
 
     hidden = parse_hidden_fields(soup)
-    for page_num in range(2, total_pages + 1):
+    page_num = 1
+    while page_num < total_pages and page_num < 500:
+        page_num += 1
         form = dict(hidden)
         form["__EVENTTARGET"] = "ctl00$MainContent$grdPlots"
         form["__EVENTARGUMENT"] = f"Page${page_num}"
@@ -466,10 +533,20 @@ def _paginate_zone(sess, path, soup, zone_id, log=print, plot_type=None):
         rows = parse_plots_table(soup)
         if not rows:
             log(f"    [warn] zone {zone_id} page {page_num}: no rows parsed, stopping")
+            try:
+                dbg = Path(__file__).with_name("debug")
+                dbg.mkdir(exist_ok=True)
+                (dbg / f"zone{zone_id}_p{page_num}_{plot_type or 'available'}.html").write_text(
+                    html, encoding="utf-8")
+            except Exception:
+                pass
             break
         for r in rows:
             yield r
         hidden = parse_hidden_fields(soup)  # refresh viewstate for the next postback
+        # The pager only lists ~10 page numbers at a time (then "..."), so
+        # re-read the highest page number from every page we land on.
+        total_pages = max(total_pages, max_page_number(soup))
 
 
 def harvest_zone(sess, zone_id, log=print):
@@ -632,6 +709,9 @@ def main():
     args = ap.parse_args()
 
     cities = ["المنيا الجديدة"] if args.test else None
+    if args.test and args.out == "status.json":
+        # never let a one-city test overwrite the real status.json baseline
+        args.out = "status_test.json"
 
     load_dotenv()
     started_at = datetime.now(timezone.utc)
