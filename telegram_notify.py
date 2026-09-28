@@ -10,6 +10,7 @@ Required environment variables (set as GitHub Secrets — see README.md):
 Run this AFTER scraper.py, in the same workflow step or job.
 """
 
+import html
 import json
 import os
 import sys
@@ -24,13 +25,15 @@ SPAM_GUARD_THRESHOLD = 15  # more "new" reservations than this in one run is
                             # almost certainly a bug, not 15 real bookings
                             # between two 5-minute checks — see README.md
 
-# --- Personalize these two -------------------------------------------------
 SITE_URL = "https://phase11ahmedgaballah-beta.vercel.app/"
-AGENT_NAME = "أحمد جاب الله"
-AGENT_PHONE_DISPLAY = "01009566779"
-# -----------------------------------------------------------------------------
+DASHBOARD_URL = SITE_URL + "dashboard"
 
 FEATURE_EMOJI = {"corner": "🔺 ناصية", "garden": "🌳 حديقة", "view": "🌊 إطلالة"}
+
+
+def esc(s):
+    """Escape text for Telegram's HTML parse mode."""
+    return html.escape(str(s or ""), quote=False)
 
 
 def fmt_money(raw):
@@ -50,32 +53,46 @@ def fmt_area(raw):
         return f"{raw} م²"
 
 
-def build_message(item, today_total, updated_at):
-    features = [label for key, label in FEATURE_EMOJI.items() if item.get(key)]
-    features_line = f"✨ {' · '.join(features)}\n" if features else ""
+def clean_project(project, city):
+    """'شمال الحى العاشر - بنى سويف الجديدة' -> 'شمال الحى العاشر' (city is on its own line)."""
+    fold = lambda x: str(x or "").replace("ى", "ي").replace("ة", "ه").replace("أ", "ا").replace("إ", "ا")
+    p = str(project or "").strip()
+    fp, fc = fold(p), fold(city).strip()
+    if fc and fp.endswith(fc) and len(fp) > len(fc):
+        p = p[: len(p) - len(fc)].rstrip(" -–")
+    return p or project
 
-    return (
-        "🏝️ قطعة جديدة اتحجزت — المرحلة 11\n\n"
-        f"📍 {item['city']}\n"
-        f"🏗️ {item['project']}\n"
-        f"🧱 المربع: {item['block']}   |   🔢 القطعة: {item['plot']}\n"
-        f"📐 المساحة: {fmt_area(item['area'])}\n"
-        f"{features_line}"
-        f"💰 المقدم: {fmt_money(item['down'])}\n\n"
-        f"📊 إجمالي القطع اللي اتحجزت النهاردة: {today_total}\n"
-        f"🕓 {updated_at}\n"
-        "━━━━━━━━━━━━━━━\n"
-        "عايز تشوف قطعة تناسب ميزانيتك من الباقي؟\n"
-        f"🌐 {SITE_URL}\n"
-        f"📊 متابعة الحجوزات لايف: {SITE_URL}dashboard\n"
-        f"📲 {AGENT_NAME} — {AGENT_PHONE_DISPLAY}"
-    )
+
+def build_message(item, seq=None):
+    """One booking. `seq` = this booking's number today (1, 2, 3...) so every
+    message carries its own number instead of the same daily total.
+    No timestamp: the check runs every ~30 min, so we don't know the exact
+    booking minute — Telegram already shows when the message was posted."""
+    features = [label for key, label in FEATURE_EMOJI.items() if item.get(key)]
+    project = clean_project(item.get("project"), item.get("city", ""))
+    lines = [
+        "🏝️ <b>قطعة جديدة اتحجزت — المرحلة 11</b>" + (f"  <i>(#{seq} النهارده)</i>" if seq else ""),
+        "",
+        f"📍 <b>{esc(item['city'])}</b>",
+        f"🏗️ {esc(project)}",
+        f"🧱 المربع: {esc(item['block'])}   |   🔢 القطعة: {esc(item['plot'])}",
+        f"📐 المساحة: {fmt_area(item['area'])}",
+    ]
+    if features:
+        lines.append("✨ " + " · ".join(features))
+    lines += [
+        f"💰 المقدم: <b>{fmt_money(item['down'])}</b>",
+        "",
+        f'🔍 <a href="{SITE_URL}">شوف القطع المتاحة</a>   ·   📊 <a href="{DASHBOARD_URL}">متابعة الحجوزات</a>',
+    ]
+    return "\n".join(lines)
 
 
 def send(token, chat_id, text):
     r = requests.post(
         TELEGRAM_API.format(token=token),
-        data={"chat_id": chat_id, "text": text},
+        data={"chat_id": chat_id, "text": text, "parse_mode": "HTML",
+              "disable_web_page_preview": "true"},
         timeout=20,
     )
     if not r.ok:
@@ -98,7 +115,6 @@ def main():
     data = json.loads(p.read_text(encoding="utf-8"))
     items = data.get("items", [])
     today_total = data.get("today_total", "?")
-    updated_at = data.get("updatedAt", "")
 
     if not items:
         print("[telegram] no new reservations this run — nothing to send")
@@ -108,19 +124,15 @@ def main():
         print(f"[telegram] {len(items)} 'new' reservations in one run — "
               f"over the sanity threshold ({SPAM_GUARD_THRESHOLD}), sending ONE "
               f"warning instead of flooding the channel")
-        warning = (
-            "⚠️ تنبيه فني — تم إيقاف إشعارات هذه الدفعة مؤقتًا\n\n"
-            f"النظام رصد {len(items)} قطعة \"جديدة\" في تشغيلة واحدة، وهو رقم "
-            "غير منطقي لفترة 5 دقائق. على الأغلب تغيير تقني في نظام المطابقة، "
-            "مش حجوزات حقيقية بهذا الحجم. تم تجاهل الإرسال التفصيلي لحماية "
-            "القناة — راجع status.json يدويًا قبل الوثوق في الأرقام القادمة."
-        )
-        send(token, chat_id, warning)
+        # The channel is public — never post a technical warning there.
         return
 
     print(f"[telegram] sending {len(items)} notification(s)")
-    for item in items:
-        send(token, chat_id, build_message(item, today_total, updated_at))
+    # number each booking within today: e.g. today_total=19 and 3 new -> #17, #18, #19
+    first = today_total - len(items) + 1 if isinstance(today_total, int) else None
+    for i, item in enumerate(items):
+        seq = first + i if first and first > 0 else None
+        send(token, chat_id, build_message(item, seq))
         time.sleep(1)  # stay well under Telegram's rate limits
 
 
