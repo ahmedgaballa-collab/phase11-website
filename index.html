@@ -14,6 +14,12 @@
       }
     }catch(e){}
   })();
+  // Theme: light by default, same choice as /dashboard (key "ag-theme")
+  (function(){
+    var th = 'light';
+    try{ th = localStorage.getItem('ag-theme') === 'dark' ? 'dark' : 'light'; }catch(e){}
+    document.documentElement.setAttribute('data-theme', th);
+  })();
 </script>
 <title id="pageTitle">مستشارك العقاري | أحمد جاب الله — أراضي المرحلة 11</title>
 <meta id="metaDesc" name="description" content="ابحث عن قطعتك في أراضي المرحلة 11 حسب المقدم والمدينة والمساحة — مع أحمد جاب الله، مستشارك العقاري.">
@@ -42,6 +48,22 @@
     --radius:12px;
     --maxw:1080px;
   }
+  html[data-theme="light"]{
+    --bg:#F6F7FA; --bg-panel:#FFFFFF; --bg-elevated:#FFFFFF; --bg-field:#F1F4F9;
+    --line:#DDE3EC; --line-soft:rgba(11,31,63,0.07);
+    --paper:#0B1F3F; --paper-dim:#4A5873; --paper-faint:#7D889C;
+    --gold:#B8912F; --gold-light:#9A7520; --gold-deep:#8B6F2E;
+    --sage:#1F8A4C; --sage-dim:#E3F2E8; --heart:#B0489F;
+  }
+  html[data-theme="light"] body{background:var(--bg);}
+  html[data-theme="light"] header.top{background:#FFFFFF;}
+  html[data-theme="light"] .toggle-chip.active{color:#1F6B3E;}
+  html[data-theme="light"] .status-pill.available{color:#1F6B3E;}
+  html[data-theme="light"] .budget-card,
+  html[data-theme="light"] .agent-card{box-shadow:0 10px 30px -18px rgba(11,31,63,0.25);}
+  .theme-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:none;color:var(--paper-dim);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;padding:0;font-family:inherit;}
+  .theme-btn:hover{border-color:var(--gold);color:var(--gold-light);}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -360,6 +382,7 @@
       </div>
     </div>
     <div class="header-right">
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Light / dark"></button>
       <div class="lang-switch">
         <button id="langAr" data-lang="ar">العربية</button>
         <button id="langEn" data-lang="en">English</button>
@@ -635,16 +658,51 @@ function renderFreshnessLive(){
   el.textContent = reservedSet.size>0 ? t().freshnessLive(fmtNum(reservedSet.size)) + (reservedUpdatedAt ? ' — ' + reservedUpdatedAt : '') : '';
 }
 
+const SB_URL = 'https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI';
+async function sbGet(path, from, to){
+  const h = {apikey:SB_KEY, Authorization:'Bearer '+SB_KEY};
+  if(from!=null){ h['Range-Unit']='items'; h['Range']=from+'-'+to; }
+  const r = await fetch(SB_URL+path, {headers:h, cache:'no-store'});
+  if(!r.ok) throw new Error(path+' '+r.status);
+  return r.json();
+}
+// Same numbers as /dashboard: live from Supabase. Falls back to status.json.
+async function loadFromSupabase(){
+  const keys = [];
+  for(let from=0; from<50000; from+=1000){
+    const rows = await sbGet('plots?select=city,block,plot_number&status=eq.unavailable&is_active=eq.true&order=id', from, from+999);
+    rows.forEach(r=>keys.push([r.city, r.block, r.plot_number].map(normKey).join('|')));
+    if(rows.length < 1000) break;
+  }
+  const [ov, runs] = await Promise.all([
+    sbGet('v_stats_overall'),
+    sbGet('scrape_runs?select=finished_at&status=neq.fail&order=id.desc&limit=1'),
+  ]);
+  const o = ov[0] || {};
+  const last = (runs[0] && runs[0].finished_at) || o.last_update;
+  return {
+    reserved: keys,
+    total: o.total_plots, booked: o.booked,
+    updatedAt: last ? new Date(last).toLocaleString('ar-EG', {timeZone:'Africa/Cairo', day:'numeric', month:'short', hour:'numeric', minute:'2-digit'}) : null,
+  };
+}
 async function loadReservedStatus(){
   try{
-    const res = await fetch('status.json', {cache:'no-store'});
-    if(!res.ok) return;
-    const data = await res.json();
+    let data;
+    try{ data = await loadFromSupabase(); }
+    catch(err){
+      console.warn('Supabase unavailable, using status.json', err);
+      const res = await fetch('status.json', {cache:'no-store'});
+      if(!res.ok) return;
+      data = await res.json();
+    }
     if(Array.isArray(data.reserved)) reservedSet = new Set(data.reserved.map(normKey));
     reservedUpdatedAt = data.updatedAt || null;
-    const totalN = DB.rows.length;
-    const resN = reservedSet.size;
+    const totalN = data.total || DB.rows.length;
+    const resN = data.booked != null ? data.booked : reservedSet.size;
     const availN = Math.max(totalN - resN, 0);
+    ['totalPill','kpiTotal'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent = fmtNum(totalN); });
     const rate = totalN ? Math.round((resN/totalN)*100) : 0;
     const kpiRes = document.getElementById('kpiReserved'); if(kpiRes) kpiRes.textContent = fmtNum(resN);
     const kpiAvail = document.getElementById('kpiAvailable'); if(kpiAvail) kpiAvail.textContent = fmtNum(availN);
@@ -1047,6 +1105,18 @@ function init(){
   updateWishUI();
   render();
   loadReservedStatus();
+  setInterval(loadReservedStatus, 5*60*1000);
+  (function(){
+    const b = document.getElementById('themeBtn');
+    const paint = ()=>{ const d = document.documentElement.getAttribute('data-theme')==='dark'; b.textContent = d ? '☀' : '☾'; b.title = d ? 'الوضع الفاتح' : 'الوضع الغامق'; };
+    b.addEventListener('click', ()=>{
+      const next = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try{ localStorage.setItem('ag-theme', next); }catch(e){}
+      paint();
+    });
+    paint();
+  })();
   if(window.innerWidth <= 760){
     document.getElementById('filtersBody').classList.add('collapsed');
     document.getElementById('filtersChev').style.transform='rotate(-90deg)';
