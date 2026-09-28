@@ -6,6 +6,11 @@
 <title>متابعة المرحلة 11 | أحمد جاب الله</title>
 <meta name="description" content="متابعة لحظية لحجوزات أراضي المرحلة 11 — بيت الوطن">
 <link rel="icon" href="logo.png">
+<script>
+// Theme: light by default; the toggle choice is remembered in this browser.
+(function(){try{var t=localStorage.getItem("ag-theme");}catch(e){}
+document.documentElement.setAttribute("data-theme", t==="dark"?"dark":"light");})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
@@ -38,6 +43,11 @@ header{background:var(--surface);border-bottom:1px solid var(--line)}
 .top .sub{color:var(--ink-3);font-size:13px}
 .live{margin-inline-start:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);
   background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.actions{display:flex;gap:8px;align-items:center}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1}
+.icon-btn:hover,.home-btn:hover{border-color:var(--gold)}
+.home-btn{font-size:13px;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:7px 12px;background:var(--bg);white-space:nowrap}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
 .dot.on{background:var(--good);box-shadow:0 0 0 0 var(--good);animation:pulse 2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(31,138,76,.5)}70%{box-shadow:0 0 0 8px rgba(31,138,76,0)}100%{box-shadow:0 0 0 0 rgba(31,138,76,0)}}
@@ -90,7 +100,7 @@ footer a{color:var(--ink-2)}
 @media (max-width:760px){
   .kpis{grid-template-columns:1fr 1fr} .split{grid-template-columns:1fr}
   .kpi .num{font-size:24px} .hide-sm{display:none} .pct{min-width:90px}
-  th,td{padding:9px 8px} .live{margin-inline-start:0}
+  th,td{padding:9px 8px} .live{margin-inline-start:0} .actions{margin-inline-start:auto}
 }
 </style>
 </head>
@@ -99,6 +109,10 @@ footer a{color:var(--ink-2)}
   <img src="logo.png" alt="AG">
   <div><h1>متابعة حجوزات المرحلة 11</h1><div class="sub">بيت الوطن — كل المدن</div></div>
   <div class="live" title="البيانات بتتحدث تلقائيًا"><span class="dot" id="dot"></span><span id="updated">جاري التحميل…</span></div>
+  <div class="actions">
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="تغيير الوضع الفاتح والغامق" title="الوضع الفاتح / الغامق"></button>
+    <a class="home-btn" href="/">← ابحث عن قطعتك</a>
+  </div>
 </div></header>
 
 <main class="wrap">
@@ -251,6 +265,20 @@ async function load(){
     $("err").style.display = "block";
   }
 }
+
+// light / dark toggle
+function paintThemeBtn(){
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  $("themeBtn").textContent = dark ? "☀" : "☾";
+  $("themeBtn").title = dark ? "الوضع الفاتح" : "الوضع الغامق";
+}
+$("themeBtn").addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("ag-theme", next); } catch (e) {}
+  paintThemeBtn();
+});
+paintThemeBtn();
 
 // interactions
 $("cities").addEventListener("click", e => {
