@@ -120,7 +120,11 @@ def build_row(p, now_iso):
     return row
 
 
-def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
+def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print,
+         zone_scope=None, record_run=True):
+    """zone_scope: when set, only these zone ids were fully read this run —
+    compare/remove within them only (rolling refresh). record_run=False skips
+    the scrape_runs row (the caller logs one combined row)."""
     """all_plots: list of dicts {key, city, project, zone_id, block, plot, area,
     down, corner, garden, view, reserved}. Returns a summary dict."""
     url = os.environ.get("SUPABASE_URL")
@@ -133,7 +137,10 @@ def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
     db = Supa(url, key)
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    existing = {r["id"]: r for r in db.select_all("plots", "id,status,is_active,content_hash")}
+    existing = {r["id"]: r for r in db.select_all("plots", "id,status,is_active,content_hash,zone_id")}
+    if zone_scope is not None:
+        scope = set(zone_scope)
+        existing = {k: v for k, v in existing.items() if v.get("zone_id") in scope}
     first_sync = len(existing) == 0
 
     current, dupes = {}, []
@@ -169,7 +176,7 @@ def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
 
     # قطع اختفت من موقع الهيئة — بس في تشغيلة كاملة من غير أخطاء
     removed_ids = []
-    if full_run and zone_errors == 0 and not first_sync:
+    if (full_run or zone_scope is not None) and zone_errors == 0 and not first_sync:
         removed_ids = [pid for pid, r in existing.items()
                        if pid not in current and r.get("is_active", True)]
         if len(removed_ids) > 0.1 * max(len(existing), 1):
@@ -200,14 +207,15 @@ def sync(all_plots, started_at, zone_errors=0, full_run=True, log=print):
         "errors": zone_errors,
         "duration_ms": int((time.time() - t0) * 1000),
     }
-    db.insert("scrape_runs", [summary])
+    if record_run:
+        db.insert("scrape_runs", [summary])
     log(f"[supabase] synced: {len(current)} plots, {len(new_rows)} new, "
         f"{len(changed_rows)} updated, {newly_booked} newly booked, "
         f"{len(removed_ids)} removed" + (" (bootstrap — new plots not logged)" if bootstrap else ""))
     return summary
 
 
-def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print):
+def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print, run_note="fast"):
     """Fast mode: only the booked plots were read this run.
     - a booked plot that the DB still has as available  -> status change (a new booking)
     - a plot the DB has as booked, in a zone that was read OK this run, but
@@ -271,7 +279,7 @@ def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print)
         "removed": 0,
         "errors": zone_errors,
         "duration_ms": int((time.time() - t0) * 1000),
-        "error_message": "fast",
+        "error_message": run_note,
     }
     db.insert("scrape_runs", [summary])
     log(f"[supabase] fast sync: {len(current)} booked read, {newly} newly booked, {len(freed)} freed")

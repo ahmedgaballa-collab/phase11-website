@@ -686,12 +686,31 @@ def _harvest_zone_task(z, sess, log, booked_only=False):
 ZONES_CACHE = Path(__file__).with_name("zones_cache.json")
 
 
-def load_zone_cache():
+ROLL_STATE = Path(__file__).with_name("rolling_state.json")
+
+
+def load_zone_cache(max_age_hours=None):
     try:
+        if max_age_hours is not None and time.time() - ZONES_CACHE.stat().st_mtime > max_age_hours * 3600:
+            return None
         zones = json.loads(ZONES_CACHE.read_text(encoding="utf-8"))
         return zones if isinstance(zones, list) and zones else None
     except Exception:
         return None
+
+
+def next_refresh_slice(zones, runs_per_cycle):
+    """Zone ids to fully re-read this run, rotating so every zone gets a full
+    refresh once every `runs_per_cycle` runs (18 x 10 min = every 3 hours)."""
+    n = len(zones)
+    k = max(1, -(-n // max(1, runs_per_cycle)))
+    try:
+        pos = int(json.loads(ROLL_STATE.read_text()).get("pos", 0)) % n
+    except Exception:
+        pos = 0
+    ids = [zones[(pos + i) % n]["zone_id"] for i in range(min(k, n))]
+    ROLL_STATE.write_text(json.dumps({"pos": (pos + k) % n}))
+    return set(ids)
 
 
 def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mode="full"):
@@ -706,11 +725,16 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
 
     sess = Session(delay=delay)
     try:
-        booked_only = mode == "fast"
-        zones = load_zone_cache() if booked_only else None
+        booked_only = mode in ("fast", "rolling")
+        zones = None
+        if mode == "fast":
+            zones = load_zone_cache()
+        elif mode == "rolling":
+            # re-discover once a day so new projects/zones get picked up
+            zones = load_zone_cache(max_age_hours=float(os.environ.get("DISCOVER_EVERY_HOURS", "24")))
         if zones is None:
             if booked_only:
-                log("[fast] no zone cache yet — discovering zones first")
+                log(f"[{mode}] zone list missing or old — discovering zones first")
             zones = discover_zones(sess, cities=cities, log=log)
             if not cities and zones:
                 ZONES_CACHE.write_text(json.dumps(zones, ensure_ascii=False), encoding="utf-8")
@@ -721,10 +745,15 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
         plot_total = 0
         errors = 0
         ok_zone_ids, failed_cities = set(), set()
+        refresh = (next_refresh_slice(zones, int(os.environ.get("ROLL_RUNS", "18")))
+                   if mode == "rolling" else set())
+        if refresh:
+            log(f"[rolling] full refresh this run: zones {sorted(refresh)}")
         t0 = time.time()
 
         for z in zones:
-            z, details, count, rows, ok = _harvest_zone_task(z, sess, log, booked_only=booked_only)
+            zone_booked_only = booked_only and z["zone_id"] not in refresh
+            z, details, count, rows, ok = _harvest_zone_task(z, sess, log, booked_only=zone_booked_only)
             if not ok or (count == 0 and not booked_only):
                 errors += 1
             if ok:
@@ -733,7 +762,8 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
                 failed_cities.add(norm(z["city"]))
             plot_total += count
             reserved_details.extend(details)
-            all_plots.extend(rows)
+            if not zone_booked_only:
+                all_plots.extend(rows)
             log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
                 f"{count} plot(s), {len(details)} reserved")
 
@@ -743,7 +773,8 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
             log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
                 f"errors before trusting this run's numbers")
         log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
-        return reserved_details, plot_total, all_plots, errors, ok_zone_ids, failed_cities, len(zones)
+        return (reserved_details, plot_total, all_plots, errors, ok_zone_ids, failed_cities,
+                len(zones), refresh & ok_zone_ids)
     finally:
         sess.close()
 
@@ -784,9 +815,9 @@ def main():
                      help="Only crawl one city (المنيا الجديدة) for a quick sanity check")
     ap.add_argument("--out", default="status.json")
     ap.add_argument("--delay", type=float, default=None)
-    ap.add_argument("--mode", choices=["auto", "fast", "full"], default="auto",
-                    help="auto (default): full run if the last full one is older than "
-                         "FULL_EVERY_HOURS, otherwise a fast booked-only run")
+    ap.add_argument("--mode", choices=["auto", "rolling", "fast", "full"], default="auto",
+                    help="auto/rolling (default): every run reads all booked plots and fully "
+                         "re-reads a rotating slice of zones — no long full runs")
     ap.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
                                              help="zones harvested in parallel (default 2 — raise cautiously)")
     args = ap.parse_args()
@@ -819,22 +850,17 @@ def _main_locked(args, started_at):
     mode = "full" if args.test else args.mode
     last_full_file = Path(__file__).with_name("last_full.txt")
     if mode == "auto":
-        every_h = float(os.environ.get("FULL_EVERY_HOURS", "6"))
-        try:
-            last_full = datetime.fromisoformat(last_full_file.read_text().strip())
-            mode = "full" if (started_at - last_full).total_seconds() > every_h * 3600 else "fast"
-        except Exception:
-            mode = "full"
+        mode = "rolling"
     delay = args.delay if args.delay is not None else (
-        float(os.environ.get("FAST_DELAY", "0.8")) if mode == "fast" else DEFAULT_DELAY)
+        float(os.environ.get("FAST_DELAY", "0.8")) if mode in ("fast", "rolling") else DEFAULT_DELAY)
     print(f"[mode] {mode} (delay {delay}s)", flush=True)
 
     previous = load_previous(args.out)
     (reserved_details, plot_total, all_plots, zone_errors,
-     ok_zone_ids, failed_cities, zone_count) = run(
+     ok_zone_ids, failed_cities, zone_count, refreshed_ok) = run(
         cities=cities, delay=delay, workers=args.workers, mode=mode)
 
-    if mode == "fast" and zone_count and zone_errors > 0.3 * zone_count:
+    if mode in ("fast", "rolling") and zone_count and zone_errors > 0.3 * zone_count:
         supabase_sync.log_failed_run(started_at, f"fast: {zone_errors}/{zone_count} zones failed")
         print(f"\n[abort] {zone_errors} of {zone_count} zones failed — not touching anything this run.")
         sys.exit(1)
@@ -875,9 +901,12 @@ def _main_locked(args, started_at):
     # Supabase: the live source for the dashboard. A failure here must not
     # stop status.json / Telegram from working, so it's isolated.
     try:
-        if mode == "fast":
+        if mode in ("fast", "rolling"):
             supabase_sync.sync_booked(reserved_details, started_at, ok_zone_ids,
-                                      zone_errors=zone_errors)
+                                      zone_errors=zone_errors, run_note=mode)
+            if refreshed_ok and all_plots:
+                supabase_sync.sync(all_plots, started_at, zone_errors=0, full_run=False,
+                                   zone_scope=refreshed_ok, record_run=False)
         else:
             supabase_sync.sync(all_plots, started_at, zone_errors=zone_errors,
                                full_run=not args.test)
