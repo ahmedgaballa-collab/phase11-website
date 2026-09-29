@@ -21,7 +21,7 @@ import requests
 
 DIFF_FILE = "diff_new_reservations.json"
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
-SPAM_GUARD_THRESHOLD = 15  # more "new" reservations than this in one run is
+SPAM_GUARD_THRESHOLD = 100  # more "new" reservations than this in one run is
                             # almost certainly a bug, not 15 real bookings
                             # between two 5-minute checks — see README.md
 
@@ -126,10 +126,10 @@ def main():
         return
 
     if len(items) > SPAM_GUARD_THRESHOLD:
-        print(f"[telegram] {len(items)} 'new' reservations in one run — "
-              f"over the sanity threshold ({SPAM_GUARD_THRESHOLD}), sending ONE "
-              f"warning instead of flooding the channel")
-        # The channel is public — never post a technical warning there.
+        # far too many for real bookings between two checks — almost certainly
+        # a read glitch; the channel is public, so stay silent
+        print(f"[telegram] {len(items)} 'new' reservations in one run — over "
+              f"{SPAM_GUARD_THRESHOLD}, treating as a glitch and sending nothing")
         return
 
     print(f"[telegram] sending {len(items)} notification(s)")
@@ -138,7 +138,8 @@ def main():
     for i, item in enumerate(items):
         seq = first + i if first and first > 0 else None
         send(token, chat_id, build_message(item, seq))
-        time.sleep(1)  # stay well under Telegram's rate limits
+        # Telegram allows ~20 posts/min in a channel — pace bigger batches
+        time.sleep(1 if len(items) <= 15 else 3.2)
 
 
 if __name__ == "__main__":
