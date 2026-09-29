@@ -245,7 +245,11 @@ class Session:
                 profile_dir,
                 channel="chrome",
                 headless=CHROME_HEADLESS,
-                args=["--lang=ar-EG"],
+                # Off-screen by default so the window that opens every few
+                # minutes can't be closed by accident (closing it kills the run).
+                # Set CHROME_OFFSCREEN=0 in .env to see it again.
+                args=["--lang=ar-EG"] + (["--window-position=-32000,-32000"]
+                                         if os.environ.get("CHROME_OFFSCREEN", "1") == "1" else []),
                 # Playwright passes --disable-extensions by default, which would
                 # silently drop VeePN — keep extensions enabled.
                 ignore_default_args=["--disable-extensions"],
@@ -794,10 +798,28 @@ def main():
 
     load_dotenv()
     started_at = datetime.now(timezone.utc)
+    lock = Path(__file__).with_name("sync.lock")
+    # a killed run leaves the lock behind — treat it as stale after 50 min
+    # (a full run takes ~30 min)
+    if lock.exists() and time.time() - lock.stat().st_mtime < 50 * 60:
+        print("[lock] another run is still in progress — skipping this one")
+        return 3  # non-zero: run_sync.bat must not send Telegram for a skipped run
+    lock.write_text(started_at.isoformat())
+    try:
+        return _main_locked(args, started_at)
+    finally:
+        try:
+            lock.unlink()
+        except Exception:
+            pass
+
+
+def _main_locked(args, started_at):
+    cities = ["المنيا الجديدة"] if args.test else None
     mode = "full" if args.test else args.mode
     last_full_file = Path(__file__).with_name("last_full.txt")
     if mode == "auto":
-        every_h = float(os.environ.get("FULL_EVERY_HOURS", "3"))
+        every_h = float(os.environ.get("FULL_EVERY_HOURS", "6"))
         try:
             last_full = datetime.fromisoformat(last_full_file.read_text().strip())
             mode = "full" if (started_at - last_full).total_seconds() > every_h * 3600 else "fast"

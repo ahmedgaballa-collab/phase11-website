@@ -113,6 +113,11 @@ def main():
         return
 
     data = json.loads(p.read_text(encoding="utf-8"))
+    # consume the file so the same bookings can never be posted twice
+    try:
+        p.replace(p.with_suffix(".sent.json"))
+    except Exception:
+        pass
     items = data.get("items", [])
     today_total = data.get("today_total", "?")
 
