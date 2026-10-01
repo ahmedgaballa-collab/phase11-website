@@ -63,7 +63,16 @@ def clean_project(project, city):
     return p or project
 
 
-def build_message(item, seq=None):
+def title_line(seq=None, late=False, alloc_label=None):
+    """Normal: '(#12 النهارده)'. A late booking (after midnight / on a day off,
+    before the next 11:00 allocation) counts for the last allocation day."""
+    if late and alloc_label:
+        tag = f"#{seq} · " if seq else ""
+        return f"⏰ <b>حجز متأخر — المرحلة 11</b>  <i>({tag}تخصيص {esc(alloc_label)})</i>"
+    return "🏝️ <b>قطعة جديدة اتحجزت — المرحلة 11</b>" + (f"  <i>(#{seq} النهارده)</i>" if seq else "")
+
+
+def build_message(item, seq=None, late=False, alloc_label=None):
     """One booking. `seq` = this booking's number today (1, 2, 3...) so every
     message carries its own number instead of the same daily total.
     No timestamp: the check runs every ~30 min, so we don't know the exact
@@ -71,7 +80,7 @@ def build_message(item, seq=None):
     features = [label for key, label in FEATURE_EMOJI.items() if item.get(key)]
     project = clean_project(item.get("project"), item.get("city", ""))
     lines = [
-        "🏝️ <b>قطعة جديدة اتحجزت — المرحلة 11</b>" + (f"  <i>(#{seq} النهارده)</i>" if seq else ""),
+        title_line(seq, late, alloc_label),
         "",
         f"📍 <b>{esc(item['city'])}</b>",
         f"🏗️ {esc(project)}",
@@ -137,7 +146,8 @@ def main():
     first = today_total - len(items) + 1 if isinstance(today_total, int) else None
     for i, item in enumerate(items):
         seq = first + i if first and first > 0 else None
-        send(token, chat_id, build_message(item, seq))
+        send(token, chat_id, build_message(item, seq, late=bool(data.get("late")),
+                                          alloc_label=data.get("alloc_label")))
         # Telegram allows ~20 posts/min in a channel — pace bigger batches
         time.sleep(1 if len(items) <= 15 else 3.2)
 

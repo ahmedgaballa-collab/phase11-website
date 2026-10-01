@@ -53,6 +53,14 @@ a{color:inherit}
 .icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);
   cursor:pointer;display:grid;place-items:center;font-size:16px;flex:none}
 .icon-btn:hover{border-color:var(--gold)}
+.tg-btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:999px;background:#229ED9;color:#fff;
+  text-decoration:none;font-weight:700;font-size:13.5px;white-space:nowrap}
+.tg-btn svg{width:17px;height:17px}
+.tg-btn:hover{filter:brightness(1.08)}
+.daynav{display:flex;align-items:center;gap:6px;margin-inline-start:auto}
+.daynav button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);cursor:pointer;font-size:15px}
+.daynav button:disabled{opacity:.35;cursor:default}
+.daynav input{font:inherit;font-size:13px;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;height:32px}
 
 /* hero */
 .hero{padding:28px 0 8px}
@@ -114,6 +122,10 @@ main{padding-bottom:40px}
 .tag{display:inline-block;font-size:11.5px;font-weight:800;border-radius:999px;padding:1px 8px;margin-inline-start:6px;vertical-align:1px}
 .tag.big{background:var(--gold-soft);color:var(--gold-ink)}
 .tag.low{background:var(--good-soft);color:var(--good)}
+.tag.late{background:rgba(234,88,12,.13);color:#c2410c}
+[data-theme="dark"] .tag.late{color:#fb923c}
+.feed .when small{display:block;font-size:11px;opacity:.8}
+.daynote{padding:8px 18px 0;font-size:12px;color:var(--ink-3)}
 .empty{color:var(--ink-3);padding:26px 18px;text-align:center}
 
 /* table */
@@ -173,7 +185,10 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
 .hide-sm{}
 @media (max-width:900px){
   .grid-kpi{grid-template-columns:1fr 1fr} .grid-2{grid-template-columns:1fr}
-  .nav{display:none} .live span:last-child{display:none}
+  .topbar .wrap{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px;row-gap:10px}
+  .nav{order:3;width:100%;margin:0;display:flex}
+  .nav a{flex:1;text-align:center;padding:8px 6px}
+  .live span:last-child{display:none} .tg-btn span{display:none} .tg-btn{padding:0 11px}
 }
 @media (max-width:560px){
   .split{grid-template-columns:1fr} .split > div + div{border-inline-start:0;border-top:1px solid var(--line)}
@@ -193,6 +208,7 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
   <nav class="nav"><a href="/">ابحث عن قطعتك</a><a class="on" href="/dashboard">متابعة الحجوزات</a></nav>
   <div class="top-actions">
     <div class="live" title="البيانات بتتحدث تلقائيًا"><span class="dot" id="dot"></span><span id="updated">جاري التحميل…</span></div>
+    <a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener" title="قناة التليجرام"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a>
     <button class="icon-btn" id="themeBtn" type="button" aria-label="الوضع الفاتح / الغامق"></button>
   </div>
 </div></header>
@@ -213,7 +229,7 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
     <div class="card kpi"><div class="top"><span class="lbl">المحجوز</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span></div>
       <div class="num" id="k-booked">—</div><div class="mini"><i id="k-booked-bar" style="width:0"></i></div><div class="foot" id="k-booked-pct">&nbsp;</div></div>
     <div class="card kpi gold"><div class="top"><span class="lbl">اتحجز النهارده</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></span></div>
-      <div class="num" id="k-today">—</div><div class="foot">من منتصف الليل بتوقيت القاهرة</div></div>
+      <div class="num" id="k-today">—</div><div class="foot">من 11 الصبح (بداية التخصيص)</div></div>
   </section>
 
   <section class="card" style="margin-top:14px">
@@ -233,7 +249,11 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
       <div class="card-b"><div class="hbars" id="topCities"><div class="empty">جاري التحميل…</div></div></div>
     </div>
     <div class="card">
-      <div class="card-h"><h2>حجوزات النهارده</h2><small id="today-count"></small></div>
+      <div class="card-h"><h2 id="dayTitle">حجوزات النهارده</h2><small id="today-count"></small>
+        <div class="daynav"><button type="button" id="dPrev" aria-label="اليوم اللي قبله">›</button>
+          <input type="date" id="dPick" min="2026-09-28" aria-label="اختار يوم">
+          <button type="button" id="dNext" aria-label="اليوم اللي بعده">‹</button></div></div>
+      <div class="daynote" id="dayNote"></div>
       <ul class="feed" id="today"><li class="empty">جاري التحميل…</li></ul>
     </div>
   </section>
@@ -274,7 +294,7 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
 <footer><div class="wrap">
   <img src="logo.png" alt="AG">
   <div><b>أحمد جاب الله</b> — مستشار عقاري<br><small style="color:var(--ink-3)">البيانات من موقع هيئة المجتمعات العمرانية الجديدة وبتتحدث تلقائيًا.</small></div>
-  <div class="cta"><a class="btn-wa" href="https://wa.me/201009566779" target="_blank" rel="noopener">واتساب</a><a class="btn-call" href="tel:01009566779">01009566779</a></div>
+  <div class="cta"><a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a><a class="btn-wa" href="https://wa.me/201009566779" target="_blank" rel="noopener">واتساب</a><a class="btn-call" href="tel:01009566779">01009566779</a></div>
 </div></footer>
 <div class="tip" id="tip"></div>
 
@@ -366,12 +386,81 @@ function renderTop(){
     <span class="n">${esc(c.city)}</span><span class="track"><i style="width:${100 * c.booked / max}%"></i></span><span class="v">${fmt(c.booked)}</span></div>`).join("");
 }
 
-function renderToday(list){
-  $("today-count").textContent = list.length ? `${fmt(list.length)} قطعة` : "";
-  if (!list.length){ $("today").innerHTML = `<li class="empty">لسه مفيش حجوزات جديدة النهارده</li>`; return; }
-  $("today").innerHTML = list.slice(0, 100).map(b => `<li>
-    <span class="when">${cairo(b.booked_at, {hour:"numeric", minute:"2-digit"})}</span>
-    <div class="what"><b>${esc(b.city)}</b>${b.down_payment_type === "big" ? '<span class="tag big">مقدم كبير</span>' : b.down_payment_type === "low" ? '<span class="tag low">مقدم صغير</span>' : ""}
+/* ---- bookings by allocation day ----
+   NUCA releases plots at 11:00 Cairo, Sunday–Thursday, except official holidays.
+   An allocation day runs from its 11:00 until the next allocation day's 11:00, so
+   late-night / weekend / holiday bookings count for the last allocation day. */
+const ALLOC_HOUR = 11, OFF_WEEKDAYS = [5, 6]; // Fri, Sat (JS: Sun=0)
+let HOLIDAYS = new Set(["2026-10-06"]);
+const cairoDate = (ms) => new Intl.DateTimeFormat("en-CA", {timeZone:"Africa/Cairo"}).format(new Date(ms));
+function cairoOffsetMin(dayStr){
+  const part = new Intl.DateTimeFormat("en-US", {timeZone:"Africa/Cairo", timeZoneName:"shortOffset"})
+    .formatToParts(new Date(dayStr + "T12:00:00Z")).find(p => p.type === "timeZoneName").value; // "GMT+3"
+  const m = part.match(/GMT([+-]\d+)(?::(\d+))?/);
+  return m ? (parseInt(m[1], 10) * 60 + Math.sign(parseInt(m[1], 10)) * parseInt(m[2] || "0", 10)) : 120;
+}
+function shiftDay(dayStr, n){
+  const [y, mo, d] = dayStr.split("-").map(Number);
+  return new Date(Date.UTC(y, mo - 1, d + n)).toISOString().slice(0, 10);
+}
+const isAllocDay = (d) => !OFF_WEEKDAYS.includes(new Date(d + "T12:00:00Z").getUTCDay()) && !HOLIDAYS.has(d);
+function allocOnOrBefore(d){ for (let i = 0; i < 60 && !isAllocDay(d); i++) d = shiftDay(d, -1); return d; }
+function nextAlloc(d){ d = shiftDay(d, 1); for (let i = 0; i < 60 && !isAllocDay(d); i++) d = shiftDay(d, 1); return d; }
+function prevAlloc(d){ return allocOnOrBefore(shiftDay(d, -1)); }
+// Cairo date of (now - 11h) -> last allocation day whose 11:00 has passed
+const currentAlloc = () => allocOnOrBefore(cairoDate(Date.now() - ALLOC_HOUR * 3600000));
+function allocStartUTC(d){
+  const [y, mo, dd] = d.split("-").map(Number);
+  return Date.UTC(y, mo - 1, dd, ALLOC_HOUR) - cairoOffsetMin(d) * 60000;
+}
+const dayLabel = (d, opts) => new Date(d + "T12:00:00Z").toLocaleDateString("ar-EG", Object.assign({timeZone:"UTC"}, opts));
+async function loadHolidays(){
+  try { const rows = await get("no_allocation_days?select=day"); HOLIDAYS = new Set([...HOLIDAYS, ...rows.map(r => r.day)]); }
+  catch (e) { console.warn("holidays table not available yet", e); }
+}
+
+let viewDay = null;
+async function loadDay(dayStr){
+  const cur = currentAlloc();
+  if (dayStr > cur) dayStr = cur;
+  dayStr = allocOnOrBefore(dayStr);
+  viewDay = dayStr;
+  const isCur = dayStr === cur;
+  $("dPick").value = dayStr; $("dPick").max = cairoDate(Date.now());
+  $("dNext").disabled = isCur; $("dPrev").disabled = dayStr <= $("dPick").min;
+  $("dayTitle").textContent = (isCur && dayStr === cairoDate(Date.now())) ? "حجوزات النهارده"
+    : "حجوزات تخصيص " + dayLabel(dayStr, {weekday:"long", day:"numeric", month:"long"});
+  $("dayNote").textContent = `من ${ALLOC_HOUR} الصبح ${dayLabel(dayStr, {weekday:"long"})} لحد ${ALLOC_HOUR} الصبح ${dayLabel(nextAlloc(dayStr), {weekday:"long"})}`;
+  $("today").innerHTML = `<li class="empty">جاري التحميل…</li>`;
+  try {
+    const from = new Date(allocStartUTC(dayStr)).toISOString(), to = new Date(allocStartUTC(nextAlloc(dayStr))).toISOString();
+    const ch = await get(`plot_changes?select=plot_id,created_at&type=eq.status&to_value=eq.unavailable` +
+      `&created_at=gte.${encodeURIComponent(from)}&created_at=lt.${encodeURIComponent(to)}&order=created_at.desc&limit=2000`);
+    const when = {};
+    ch.forEach(c => { if (!when[c.plot_id]) when[c.plot_id] = c.created_at; });
+    const ids = Object.keys(when), plots = [];
+    for (let i = 0; i < ids.length; i += 40){
+      const list = ids.slice(i, i + 40).map(x => '"' + x.replace(/"/g, '\\"') + '"').join(",");
+      plots.push(...await get(`plots?select=id,city,project,zone_name,block,plot_number,area_sqm,down_payment,down_payment_type&id=in.(${encodeURIComponent(list)})`));
+    }
+    if (viewDay !== dayStr) return; // user moved on
+    const rows = plots.map(p => ({...p, booked_at: when[p.id], late: cairoDate(when[p.id]) !== dayStr}))
+      .sort((a, b) => b.booked_at.localeCompare(a.booked_at));
+    renderToday(rows, isCur);
+    if (isCur) $("k-today").textContent = fmt(rows.length);
+  } catch (e) {
+    console.error(e);
+    $("today").innerHTML = `<li class="empty">مقدرناش نحمّل حجوزات اليوم ده — جرّب تاني</li>`;
+  }
+}
+
+function renderToday(list, isCur = true){
+  const late = list.filter(b => b.late).length;
+  $("today-count").textContent = list.length ? `${fmt(list.length)} قطعة` + (late ? ` · ${fmt(late)} متأخر` : "") : "";
+  if (!list.length){ $("today").innerHTML = `<li class="empty">${isCur ? "لسه مفيش حجوزات جديدة في تخصيص النهارده" : "مفيش حجوزات اتسجلت في اليوم ده"}</li>`; return; }
+  $("today").innerHTML = list.slice(0, 300).map(b => `<li${b.late ? ' class="is-late"' : ""}>
+    <span class="when">${cairo(b.booked_at, {hour:"numeric", minute:"2-digit"})}${b.late ? `<small>${cairo(b.booked_at, {weekday:"short"})}</small>` : ""}</span>
+    <div class="what"><b>${esc(b.city)}</b>${b.late ? '<span class="tag late">⏰ متأخر</span>' : ""}${b.down_payment_type === "big" ? '<span class="tag big">مقدم كبير</span>' : b.down_payment_type === "low" ? '<span class="tag low">مقدم صغير</span>' : ""}
       <div class="sub">${esc(b.project || "")}${b.zone_name ? " · " + esc(b.zone_name) : ""}</div>
       <div class="sub">بلوك ${esc(b.block)} · قطعة ${esc(b.plot_number)}${b.area_sqm ? " · " + fmt(Math.round(b.area_sqm)) + " م²" : ""}${b.down_payment ? " · مقدم $" + fmt(Math.round(b.down_payment)) : ""}</div></div></li>`).join("");
 }
@@ -380,7 +469,7 @@ async function load(){
   try {
     const [ov, cities, projects, zones, today, runs] = await Promise.all([
       get("v_stats_overall"), get("v_stats_by_city"), get("v_stats_by_project"),
-      get("v_stats_by_zone"), get("v_today_bookings?limit=200"),
+      get("v_stats_by_zone"), get("v_today_bookings?select=plot_id&limit=1000"),
       get("scrape_runs?select=finished_at,status&status=neq.fail&order=id.desc&limit=1"),
     ]);
     const o = ov[0] || {};
@@ -391,7 +480,7 @@ async function load(){
     $("k-booked").textContent = fmt(o.booked);
     $("k-booked-bar").style.width = Math.min(100, bp) + "%";
     $("k-booked-pct").textContent = o.total_plots ? pctTxt(bp) + " من الإجمالي" : "";
-    $("k-today").textContent = fmt(today.length);
+    $("k-today").textContent = fmt(o.booked_today ?? today.length);
     for (const [key, tot, bk] of [["low", o.low_dp_total, o.low_dp_booked], ["big", o.big_dp_total, o.big_dp_booked]]){
       $("m-" + key + "-n").innerHTML = `${fmt((tot || 0) - (bk || 0))} <span>متاح من ${fmt(tot)}</span>`;
       $("m-" + key).style.width = Math.min(100, pctOf(bk, tot)) + "%";
@@ -399,7 +488,8 @@ async function load(){
       $("m-" + key + "-a").textContent = `${pctTxt(pctOf(bk, tot))} نسبة الحجز`;
     }
     state.cities = cities; state.projects = projects; state.zones = zones;
-    renderCityMulti(); renderCities(); renderTop(); renderToday(today);
+    renderCityMulti(); renderCities(); renderTop();
+    if (!viewDay || viewDay === currentAlloc() || viewDay > currentAlloc()) loadDay(currentAlloc());
     const last = runs[0]?.finished_at || o.last_update;
     $("updated").textContent = last ? "آخر تحديث " + cairo(last, {day:"numeric", month:"short", hour:"numeric", minute:"2-digit"}) : "مفيش بيانات لسه";
     $("err").style.display = "none";
@@ -409,6 +499,10 @@ async function load(){
     $("err").style.display = "block";
   }
 }
+
+$("dPrev").addEventListener("click", () => loadDay(prevAlloc(viewDay || currentAlloc())));
+$("dNext").addEventListener("click", () => loadDay(nextAlloc(viewDay || currentAlloc())));
+$("dPick").addEventListener("change", e => { if (e.target.value) loadDay(e.target.value); });
 
 /* theme */
 function paintThemeBtn(){
@@ -463,7 +557,7 @@ document.addEventListener("mousemove", e => {
 /* live: Supabase Realtime + polling fallback */
 let timer;
 const refreshSoon = () => { clearTimeout(timer); timer = setTimeout(load, 1500); };
-load();
+loadHolidays().then(load);
 setInterval(load, 5 * 60 * 1000);
 try {
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);

@@ -174,8 +174,87 @@ def norm(s):
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _egypt_dst(utc_dt):
+    """Egypt summer time (since 2023): last Friday of April 00:00 -> last
+    Thursday of October 24:00, local time. Used only if tzdata is missing."""
+    y = utc_dt.year
+    def last(month, weekday):  # weekday: Mon=0 .. Sun=6
+        d = datetime(y, month + 1, 1) - timedelta(days=1)
+        return d - timedelta(days=(d.weekday() - weekday) % 7)
+    start = last(4, 4) - timedelta(hours=2)                     # 00:00 +02 in UTC
+    end = last(10, 3) + timedelta(days=1) - timedelta(hours=3)  # 24:00 +03 in UTC
+    naive = utc_dt.replace(tzinfo=None)
+    return start <= naive < end
+
+
 def cairo_now():
-    return datetime.now(timezone.utc) + timedelta(hours=3)
+    """Current Cairo wall-clock time (naive datetime)."""
+    utc = datetime.now(timezone.utc)
+    try:
+        from zoneinfo import ZoneInfo
+        return utc.astimezone(ZoneInfo("Africa/Cairo")).replace(tzinfo=None)
+    except Exception:
+        return (utc + timedelta(hours=3 if _egypt_dst(utc) else 2)).replace(tzinfo=None)
+
+
+# ---- allocation day ----------------------------------------------------
+# NUCA releases the day's plots at 11:00 Cairo, Sunday–Thursday, except
+# official holidays. A booking made after midnight (or on a Friday/Saturday/
+# holiday) still belongs to the last allocation day.
+ALLOC_START_HOUR = 11
+ALLOC_OFF_WEEKDAYS = (4, 5)          # Friday, Saturday
+HOLIDAYS_FALLBACK = {"2026-10-06"}   # used if Supabase can't be reached
+HOLIDAYS_CACHE = "holidays_cache.json"
+AR_WEEKDAYS = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
+
+
+def load_holidays(max_age_hours=6):
+    """Official holidays from Supabase table no_allocation_days, cached."""
+    p = Path(HOLIDAYS_CACHE)
+    try:
+        if p.exists() and time.time() - p.stat().st_mtime < max_age_hours * 3600:
+            return set(json.loads(p.read_text(encoding="utf-8")))
+    except Exception:
+        pass
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
+    if url and key:
+        try:
+            import requests
+            r = requests.get(url.rstrip("/") + "/rest/v1/no_allocation_days",
+                             params={"select": "day"},
+                             headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=20)
+            if r.ok:
+                days = sorted({row["day"] for row in r.json()} | HOLIDAYS_FALLBACK)
+                p.write_text(json.dumps(days), encoding="utf-8")
+                return set(days)
+        except Exception:
+            pass
+    try:
+        if p.exists():
+            return set(json.loads(p.read_text(encoding="utf-8")))
+    except Exception:
+        pass
+    return set(HOLIDAYS_FALLBACK)
+
+
+def alloc_day(now=None, holidays=None):
+    """The allocation day (date) a booking made at Cairo time `now` counts for."""
+    now = now or cairo_now()
+    holidays = load_holidays() if holidays is None else holidays
+    d = (now - timedelta(hours=ALLOC_START_HOUR)).date()
+    for _ in range(60):
+        if d.weekday() not in ALLOC_OFF_WEEKDAYS and d.isoformat() not in holidays:
+            return d
+        d -= timedelta(days=1)
+    return d
+
+
+def alloc_info(now=None, holidays=None):
+    """(allocation date 'YYYY-MM-DD', is_late, label like 'الخميس 1/10')."""
+    now = now or cairo_now()
+    d = alloc_day(now, holidays)
+    late = now.date() != d
+    return d.isoformat(), late, f"{AR_WEEKDAYS[d.weekday()]} {d.day}/{d.month}"
 
 
 def truthy_feature(cell):
@@ -713,7 +792,27 @@ def next_refresh_slice(zones, runs_per_cycle):
     return set(ids)
 
 
-def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mode="full"):
+ACTIVITY_FILE = Path(__file__).with_name("zone_activity.json")
+
+
+def load_activity():
+    try:
+        return json.loads(ACTIVITY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def mark_activity(zone_id):
+    a = load_activity()
+    a[str(zone_id)] = time.time()
+    try:
+        ACTIVITY_FILE.write_text(json.dumps(a))
+    except Exception:
+        pass
+
+
+def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mode="full",
+        on_zone=None):
     """mode="full": discover every zone and read available + booked plots.
     mode="fast": reuse the zone list from the last full run and read ONLY the
     booked-plots pass of each zone — ~1k plots instead of ~15k, so it can run
@@ -749,6 +848,11 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
                    if mode == "rolling" else set())
         if refresh:
             log(f"[rolling] full refresh this run: zones {sorted(refresh)}")
+        if booked_only:
+            # zones that had a booking most recently first — that's where the
+            # next booking is most likely, so it gets announced sooner
+            act = load_activity()
+            zones = sorted(zones, key=lambda z: -float(act.get(str(z["zone_id"]), 0)))
         t0 = time.time()
 
         for z in zones:
@@ -764,6 +868,11 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
             reserved_details.extend(details)
             if not zone_booked_only:
                 all_plots.extend(rows)
+            if on_zone:
+                try:
+                    on_zone(z, details, ok)
+                except Exception as e:
+                    log(f"    [instant] notify failed: {e}")
             log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
                 f"{count} plot(s), {len(details)} reserved")
 
@@ -790,10 +899,47 @@ def load_previous(path):
         return set()
 
 
+class InstantNotifier:
+    """Posts a booking to Telegram as soon as its zone has been read, instead
+    of waiting for the whole ~5-minute pass to finish. Whatever it doesn't
+    send (first run, a suspicious burst) is left for the end-of-run diff."""
+    ZONE_BURST_MAX = 20
+
+    def __init__(self, previous, enabled=True):
+        self.prev = previous
+        self.sent = set()
+        self.token = os.environ.get("TELEGRAM_BOT_TOKEN")
+        self.chat = os.environ.get("TELEGRAM_CHAT_ID")
+        # no baseline yet (first run on a machine) -> everything looks new; stay quiet
+        self.enabled = bool(enabled and previous and self.token and self.chat)
+
+    def __call__(self, z, details, ok):
+        if not (self.enabled and ok):
+            return
+        new = [d for d in details if d["key"] not in self.prev and d["key"] not in self.sent]
+        if not new:
+            return
+        mark_activity(z["zone_id"])
+        if len(new) > self.ZONE_BURST_MAX:
+            print(f"    [instant] {len(new)} new in zone {z['zone_id']} at once — leaving to end-of-run checks")
+            return
+        import telegram_notify
+        for d in new:
+            seq = update_daily_count(1)
+            _, late, label = alloc_info()
+            msg = telegram_notify.build_message(d, seq, late=late, alloc_label=label)
+            if telegram_notify.send(self.token, self.chat, msg):
+                self.sent.add(d["key"])
+                print(f"    [instant] posted {d['city']} / {d['block']} / {d['plot']} (#{seq})", flush=True)
+            else:
+                update_daily_count(-1)
+            time.sleep(1)
+
+
 def update_daily_count(new_count, path="daily_stats.json"):
-    """Keeps a running total of new reservations for 'today' (Cairo time),
-    resetting automatically when the date rolls over."""
-    today = cairo_now().strftime("%Y-%m-%d")
+    """Running total of new reservations for the current allocation day
+    (starts 11:00 Cairo; Fri/Sat/holidays roll into the last working day)."""
+    today = alloc_day().isoformat()
     data = {"date": today, "count": 0}
     p = Path(path)
     if p.exists():
@@ -852,13 +998,15 @@ def _main_locked(args, started_at):
     if mode == "auto":
         mode = "rolling"
     delay = args.delay if args.delay is not None else (
-        float(os.environ.get("FAST_DELAY", "0.8")) if mode in ("fast", "rolling") else DEFAULT_DELAY)
+        float(os.environ.get("FAST_DELAY", "0.6")) if mode in ("fast", "rolling") else DEFAULT_DELAY)
     print(f"[mode] {mode} (delay {delay}s)", flush=True)
 
+    print(f"==== {cairo_now().strftime('%Y-%m-%d %H:%M:%S')} ====", flush=True)
     previous = load_previous(args.out)
+    notifier = InstantNotifier(previous, enabled=not args.test)
     (reserved_details, plot_total, all_plots, zone_errors,
      ok_zone_ids, failed_cities, zone_count, refreshed_ok) = run(
-        cities=cities, delay=delay, workers=args.workers, mode=mode)
+        cities=cities, delay=delay, workers=args.workers, mode=mode, on_zone=notifier)
 
     if mode in ("fast", "rolling") and zone_count and zone_errors > 0.3 * zone_count:
         supabase_sync.log_failed_run(started_at, f"fast: {zone_errors}/{zone_count} zones failed")
@@ -920,6 +1068,10 @@ def _main_locked(args, started_at):
 
     newly_reserved = sorted(current - previous)
     newly_freed = sorted(previous - current)
+    already_sent = notifier.sent
+    if already_sent:
+        print(f"[instant] {len(already_sent)} booking(s) were already posted to Telegram during the run")
+    unsent = [k for k in newly_reserved if k not in already_sent]
 
     now = cairo_now()
     payload = {
@@ -936,7 +1088,7 @@ def _main_locked(args, started_at):
               f"glitch, NOT adding it to today's count, and not sending per-plot Telegram alerts")
         today_total = update_daily_count(0)
     else:
-        today_total = update_daily_count(len(newly_reserved))
+        today_total = update_daily_count(len(unsent))
 
     print(f"\n=== SUMMARY ===")
     print(f"total reserved now: {len(current)}")
@@ -945,10 +1097,12 @@ def _main_locked(args, started_at):
     print(f"total reserved today: {today_total}")
 
     # Rich per-plot details for just the NEW reservations, for Telegram
+    _alloc, _late, _label = alloc_info()
     diff_payload = {
         "today_total": today_total,
+        "alloc_day": _alloc, "late": _late, "alloc_label": _label,
         "updatedAt": now.strftime("%Y-%m-%d %H:%M"),
-        "items": [current_map[k] for k in newly_reserved],
+        "items": [current_map[k] for k in unsent],
     }
     Path("diff_new_reservations.json").write_text(
         json.dumps(diff_payload, ensure_ascii=False), encoding="utf-8"
