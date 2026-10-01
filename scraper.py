@@ -96,7 +96,7 @@ DEFAULT_WORKERS = 1   # zones harvested in parallel. Was 6, then 3 (2026-09-22),
                       # roughly 1 zone per 4+ minutes. Backing off further:
                       # 1 worker, 1.5s delay. Raise only after several clean
                       # runs with no "Read timed out" errors in the logs.
-DAILY_SPAM_GUARD = 100  # more "new" reservations than this in one 5-minute run
+DAILY_SPAM_GUARD = 400  # NUCA now releases up to 300 plots/day; more "new" reservations than this in one 5-minute run
                         # is almost certainly a key/matching bug, not real
                         # bookings — don't let it inflate the daily counter
 TIMEOUT = 50  # confirmed 2026-09-23: even 150s does not help (100% "Read timed
@@ -903,7 +903,7 @@ class InstantNotifier:
     """Posts a booking to Telegram as soon as its zone has been read, instead
     of waiting for the whole ~5-minute pass to finish. Whatever it doesn't
     send (first run, a suspicious burst) is left for the end-of-run diff."""
-    ZONE_BURST_MAX = 20
+    ZONE_BURST_MAX = 120  # opening rush at 11:00 can book dozens in one zone
 
     def __init__(self, previous, enabled=True):
         self.prev = previous

@@ -21,7 +21,7 @@ import requests
 
 DIFF_FILE = "diff_new_reservations.json"
 TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
-SPAM_GUARD_THRESHOLD = 100  # more "new" reservations than this in one run is
+SPAM_GUARD_THRESHOLD = 400  # daily allocation is up to 300 plots; more "new" reservations than this in one run is
                             # almost certainly a bug, not 15 real bookings
                             # between two 5-minute checks — see README.md
 
@@ -98,15 +98,33 @@ def build_message(item, seq=None, late=False, alloc_label=None):
 
 
 def send(token, chat_id, text):
-    r = requests.post(
-        TELEGRAM_API.format(token=token),
-        data={"chat_id": chat_id, "text": text, "parse_mode": "HTML",
-              "disable_web_page_preview": "true"},
-        timeout=20,
-    )
-    if not r.ok:
+    """Post one message. Telegram limits a channel to ~20 posts/min; on a
+    429 it says how long to wait (retry_after) — wait and try again."""
+    for attempt in range(4):
+        try:
+            r = requests.post(
+                TELEGRAM_API.format(token=token),
+                data={"chat_id": chat_id, "text": text, "parse_mode": "HTML",
+                      "disable_web_page_preview": "true"},
+                timeout=20,
+            )
+        except requests.RequestException as e:
+            print(f"[telegram] network error: {e}", file=sys.stderr)
+            time.sleep(3)
+            continue
+        if r.ok:
+            return True
+        if r.status_code == 429:
+            try:
+                wait = int(r.json().get("parameters", {}).get("retry_after", 5))
+            except Exception:
+                wait = 5
+            print(f"[telegram] rate limited — waiting {wait}s", file=sys.stderr)
+            time.sleep(min(wait, 60) + 1)
+            continue
         print(f"[telegram] failed to send: {r.status_code} {r.text}", file=sys.stderr)
-    return r.ok
+        return False
+    return False
 
 
 def main():
