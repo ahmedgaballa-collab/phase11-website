@@ -811,6 +811,74 @@ def mark_activity(zone_id):
         pass
 
 
+ZONE_SIZES = Path(__file__).with_name("zone_sizes.json")
+HOT_ZONES = int(os.environ.get("HOT_ZONES", "8"))           # re-read this many busiest zones...
+HOT_EVERY = int(os.environ.get("HOT_EVERY", "12"))          # ...after every N other zones
+HOT_WINDOW_H = float(os.environ.get("HOT_WINDOW_HOURS", "72"))
+
+
+def load_zone_sizes(log=print):
+    """{zone_id: total plots (available + booked)} — a zone with 0 plots has
+    nothing that can be booked, so booked-only passes skip it (it is still
+    fully re-read in its rolling-refresh slot, so a zone that gets plots
+    later is picked up). Bootstrapped once from Supabase."""
+    try:
+        return {int(k): v for k, v in json.loads(ZONE_SIZES.read_text(encoding="utf-8")).items()}
+    except Exception:
+        pass
+    sizes = {}
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
+    if url and key:
+        try:
+            import requests
+            r = requests.get(url.rstrip("/") + "/rest/v1/v_stats_by_zone",
+                             params={"select": "zone_id,total_plots"},
+                             headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
+            if r.ok:
+                sizes = {int(x["zone_id"]): int(x["total_plots"] or 0) for x in r.json() if x.get("zone_id") is not None}
+                log(f"[zones] loaded plot counts for {len(sizes)} zone(s) from Supabase")
+        except Exception as e:
+            log(f"[zones] could not load zone sizes: {e}")
+    return sizes
+
+
+def save_zone_sizes(sizes):
+    try:
+        ZONE_SIZES.write_text(json.dumps({str(k): v for k, v in sizes.items()}), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def plan_booked_order(zones, refresh, sizes, act, log=print):
+    """Booked-only pass order:
+    - zones known to have 0 plots are skipped (unless due for a full refresh)
+    - the busiest zones (most recent bookings) go first AND are re-read after
+      every HOT_EVERY other zones, so a booking there is caught within ~a
+      minute instead of waiting for the whole pass to come round again."""
+    now = time.time()
+    if sizes:
+        # a zone missing from the counts has never shown a plot (Supabase only
+        # lists zones that have plots); its refresh slot re-checks it anyway
+        live = [z for z in zones if z["zone_id"] in refresh or sizes.get(z["zone_id"], 0) > 0]
+        skipped = len(zones) - len(live)
+        if skipped:
+            log(f"[plan] skipping {skipped} zone(s) with no plots")
+    else:
+        live = list(zones)
+    live.sort(key=lambda z: -float(act.get(str(z["zone_id"]), 0)))
+    hot = [z for z in live if now - float(act.get(str(z["zone_id"]), 0)) < HOT_WINDOW_H * 3600][:HOT_ZONES]
+    hot_ids = {z["zone_id"] for z in hot}
+    cold = [z for z in live if z["zone_id"] not in hot_ids]
+    order = [(z, False) for z in hot]
+    for i in range(0, len(cold), HOT_EVERY):
+        order += [(z, False) for z in cold[i:i + HOT_EVERY]]
+        if hot and i + HOT_EVERY < len(cold):
+            order += [(z, True) for z in hot]   # True = repeat read (booked-only)
+    if hot:
+        log(f"[plan] {len(hot)} busy zone(s) re-read every {HOT_EVERY} zones: {sorted(hot_ids)}")
+    return order
+
+
 def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mode="full",
         on_zone=None):
     """mode="full": discover every zone and read available + booked plots.
@@ -848,20 +916,37 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
                    if mode == "rolling" else set())
         if refresh:
             log(f"[rolling] full refresh this run: zones {sorted(refresh)}")
+        sizes = load_zone_sizes(log) if booked_only else {}
         if booked_only:
-            # zones that had a booking most recently first — that's where the
-            # next booking is most likely, so it gets announced sooner
-            act = load_activity()
-            zones = sorted(zones, key=lambda z: -float(act.get(str(z["zone_id"]), 0)))
+            order = plan_booked_order(zones, refresh, sizes, load_activity(), log=log)
+        else:
+            order = [(z, False) for z in zones]
         t0 = time.time()
+        seen = set()
 
-        for z in zones:
-            zone_booked_only = booked_only and z["zone_id"] not in refresh
+        for z, repeat in order:
+            zone_booked_only = booked_only and (repeat or z["zone_id"] not in refresh)
             z, details, count, rows, ok = _harvest_zone_task(z, sess, log, booked_only=zone_booked_only)
+            if repeat:
+                # a re-read of a busy zone: only for faster alerts; never let a
+                # flaky repeat mark the city as failed or double-count plots
+                if ok:
+                    reserved_details.extend(details)
+                    if on_zone:
+                        try:
+                            on_zone(z, details, ok)
+                        except Exception as e:
+                            log(f"    [instant] notify failed: {e}")
+                continue
+            seen.add(z["zone_id"])
             if not ok or (count == 0 and not booked_only):
                 errors += 1
             if ok:
                 ok_zone_ids.add(z["zone_id"])
+                if not zone_booked_only:
+                    sizes[z["zone_id"]] = count
+                elif count and sizes.get(z["zone_id"], 0) < count:
+                    sizes[z["zone_id"]] = count
             else:
                 failed_cities.add(norm(z["city"]))
             plot_total += count
@@ -876,6 +961,8 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
             log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
                 f"{count} plot(s), {len(details)} reserved")
 
+        if sizes and not cities:
+            save_zone_sizes(sizes)
         elapsed = time.time() - t0
         log(f"[harvest] done in {elapsed:.1f}s")
         if errors:
@@ -883,7 +970,7 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
                 f"errors before trusting this run's numbers")
         log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
         return (reserved_details, plot_total, all_plots, errors, ok_zone_ids, failed_cities,
-                len(zones), refresh & ok_zone_ids)
+                len(seen) or len(zones), refresh & ok_zone_ids)
     finally:
         sess.close()
 
