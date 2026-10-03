@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>خرائط المرحلة 11 | أحمد جاب الله</title>
+<meta name="description" content="خرائط كل مناطق أراضي المرحلة 11 — بيت الوطن، لكل مدينة، مع إمكانية التكبير والتحميل">
+<link rel="icon" href="logo.png">
+<script>
+(function(){var t="light";try{t=localStorage.getItem("ag-theme")==="dark"?"dark":"light";}catch(e){}
+document.documentElement.setAttribute("data-theme",t);})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root, :root[data-theme="light"]{
+  --bg:#F4F6F9; --surface:#FFFFFF; --surface-2:#F8FAFC; --ink:#0B1F3F; --ink-2:#4A5873; --ink-3:#7D889C;
+  --line:#E3E8EF; --track:#EDF1F6; --gold:#B8912F; --gold-ink:#8F6E1F; --gold-soft:#F7F0DE;
+  --booked:#0B1F3F; --good:#1F8A4C; --good-soft:#E6F4EC; --bad:#A23B3B; --bad-soft:#F8E9E9;
+  --shadow:0 1px 2px rgba(11,31,63,.04), 0 8px 24px -12px rgba(11,31,63,.12);
+  --radius:16px;
+}
+:root[data-theme="dark"]{
+  --bg:#0A1120; --surface:#111B30; --surface-2:#0E172A; --ink:#F5F1E7; --ink-2:#B7C2D9; --ink-3:#7E8CA8;
+  --line:#243452; --track:#1B2740; --gold:#C9A44C; --gold-ink:#E8CC85; --gold-soft:#2A2616;
+  --booked:#C9A44C; --good:#7FAE83; --good-soft:#1B2A22; --bad:#E08A8A; --bad-soft:#2E1B1F;
+  --shadow:0 1px 2px rgba(0,0,0,.2), 0 10px 30px -14px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Tajawal',system-ui,sans-serif;font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+
+/* header */
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:68px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;min-width:0}
+.brand img{height:42px;width:42px;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:3px}
+.brand b{display:block;font-size:16px;font-weight:800;line-height:1.2;white-space:nowrap}
+.brand small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap}
+.nav{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-inline-start:12px}
+.nav a{font-size:13.5px;text-decoration:none;color:var(--ink-2);padding:6px 14px;border-radius:999px;white-space:nowrap;font-weight:500}
+.nav a.on{background:var(--ink);color:var(--surface);font-weight:700}
+.top-actions{margin-inline-start:auto;display:flex;align-items:center;gap:8px}
+.live{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:none}
+.dot.on{background:#22A45D;animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,164,93,.45)}70%{box-shadow:0 0 0 7px rgba(34,164,93,0)}100%{box-shadow:0 0 0 0 rgba(34,164,93,0)}}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  cursor:pointer;display:grid;place-items:center;font-size:16px;flex:none}
+.icon-btn:hover{border-color:var(--gold)}
+.tg-btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:999px;background:#229ED9;color:#fff;
+  text-decoration:none;font-weight:700;font-size:13.5px;white-space:nowrap}
+.tg-btn svg{width:17px;height:17px}
+.tg-btn:hover{filter:brightness(1.08)}
+
+.hero{padding:26px 0 8px}
+.hero h1{margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:-.2px}
+.hero p{margin:0;color:var(--ink-2)}
+.tools{position:sticky;top:68px;z-index:10;background:var(--bg);padding:12px 0 10px;display:flex;flex-direction:column;gap:10px}
+.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 12px;height:44px;box-shadow:var(--shadow)}
+.search input{flex:1;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;min-width:0}
+.search svg{width:18px;height:18px;color:var(--ink-3);flex:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
+.chip{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;white-space:nowrap}
+.chip b{color:var(--ink-3);font-weight:700;margin-inline-start:4px;font-size:12px}
+.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip.on b{color:inherit;opacity:.75}
+.city-sec{margin-top:18px}
+.city-h{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
+.city-h h2{margin:0;font-size:18px;font-weight:800}
+.city-h small{color:var(--ink-3)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.map-card{display:block;text-align:start;padding:0;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);overflow:hidden;cursor:pointer;
+  box-shadow:var(--shadow);font:inherit;color:inherit;transition:transform .15s,border-color .15s}
+.map-card:hover{transform:translateY(-2px);border-color:var(--gold)}
+.map-card .th{aspect-ratio:4/3;background:#fff center/cover no-repeat;border-bottom:1px solid var(--line)}
+.map-card .tx{padding:10px 12px 12px}
+.map-card b{display:block;font-size:14.5px;font-weight:700;line-height:1.35}
+.map-card small{display:block;color:var(--ink-3);font-size:12.5px;margin-top:2px}
+.empty{padding:40px 10px;text-align:center;color:var(--ink-3)}
+main{padding-bottom:20px}
+footer{border-top:1px solid var(--line);background:var(--surface);margin-top:28px}
+footer .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 16px;color:var(--ink-2);font-size:13.5px}
+footer img{height:34px}
+footer .cta{margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap}
+footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13.5px}
+.btn-wa{background:#25A05B;color:#fff}
+.btn-call{border:1px solid var(--line);color:var(--ink)}
+
+@media (max-width:900px){
+  .topbar .wrap{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px;row-gap:10px}
+  .nav{order:3;width:100%;margin:0;display:flex}
+  .nav a{flex:1;text-align:center;padding:8px 6px}
+  .tg-btn span{display:none} .tg-btn{padding:0 11px}
+  .tools{top:0;position:relative}
+}
+@media (max-width:560px){
+  .brand small{display:none} .hero h1{font-size:22px}
+  .grid{grid-template-columns:1fr 1fr;gap:10px} .map-card b{font-size:13.5px} .map-card .tx{padding:8px 10px 10px}
+  footer .cta{margin-inline-start:0}
+}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="/"><img src="logo.png" alt="AG"><span><b>أحمد جاب الله</b><small>مستشارك العقاري — المرحلة 11</small></span></a>
+  <nav class="nav"><a href="/">ابحث عن قطعتك</a><a href="/dashboard">متابعة الحجوزات</a><a class="on" href="/maps">الخرائط</a></nav>
+  <div class="top-actions">
+    <a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener" title="قناة التليجرام"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="الوضع الفاتح / الغامق"></button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <section class="hero">
+    <h1>خرائط المرحلة 11</h1>
+    <p id="lead">خريطة لكل منطقة في كل مدينة — دوس على أي خريطة تفتحها وتكبّرها.</p>
+  </section>
+  <div class="tools">
+    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="ابحث باسم المنطقة أو المجاورة…" autocomplete="off"></label>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div id="list"><div class="empty">جاري تحميل الخرائط…</div></div>
+</main>
+
+<footer><div class="wrap">
+  <img src="logo.png" alt="AG">
+  <div><b>أحمد جاب الله</b> — مستشار عقاري<br><small style="color:var(--ink-3)">البيانات من موقع هيئة المجتمعات العمرانية الجديدة وبتتحدث تلقائيًا.</small></div>
+  <div class="cta"><a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a><a class="btn-wa" href="https://wa.me/201009566779" target="_blank" rel="noopener">واتساب</a><a class="btn-call" href="tel:01009566779">01009566779</a></div>
+</div></footer>
+<script src="mapviewer.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const params = new URLSearchParams(location.search);
+let ALL = [], city = params.get("city") || "", q = "";
+
+const countLabel = n => n === 1 ? "خريطة واحدة" : n === 2 ? "خريطتين" : n <= 10 ? n + " خرائط" : n + " خريطة";
+function cities(){
+  const m = new Map(); ALL.forEach(it => m.set(it.city, (m.get(it.city) || 0) + 1)); return [...m];
+}
+function shown(){
+  const nq = AGMaps.norm(q);
+  return ALL.filter(it => (!city || it.city === city) && (!nq || AGMaps.norm(it.area + it.city).includes(nq)));
+}
+function renderChips(){
+  $("chips").innerHTML = `<button class="chip${city ? "" : " on"}" data-c="">كل المدن<b>${ALL.length}</b></button>` +
+    cities().map(([c, n]) => `<button class="chip${c === city ? " on" : ""}" data-c="${esc(c)}">${esc(c)}<b>${n}</b></button>`).join("");
+}
+function render(){
+  const list = shown();
+  if (!list.length){ $("list").innerHTML = `<div class="empty">مفيش خرائط بالاسم ده</div>`; return; }
+  const groups = new Map(); list.forEach(it => { if (!groups.has(it.city)) groups.set(it.city, []); groups.get(it.city).push(it); });
+  $("list").innerHTML = [...groups].map(([c, arr]) => `<section class="city-sec"><div class="city-h"><h2>${esc(c)}</h2><small>${countLabel(arr.length)}</small></div>
+    <div class="grid">${arr.map(it => `<button class="map-card" type="button" data-i="${it.i}">
+      <div class="th" style="background-image:url('${it.thumb}')"></div>
+      <div class="tx"><b>${esc(it.area)}</b><small>${esc(it.city)}</small></div></button>`).join("")}</div></section>`).join("");
+}
+function setCity(c){
+  city = c; renderChips(); render();
+  const u = new URL(location.href); c ? u.searchParams.set("city", c) : u.searchParams.delete("city"); u.searchParams.delete("area");
+  history.replaceState(null, "", u);
+}
+$("chips").addEventListener("click", e => { const b = e.target.closest(".chip"); if (b) setCity(b.dataset.c); });
+$("q").addEventListener("input", e => { q = e.target.value; if (q && city) setCity(""); else render(); });
+$("list").addEventListener("click", e => {
+  const b = e.target.closest(".map-card"); if (!b) return;
+  AGMaps.open(+b.dataset.i, shown());
+});
+
+AGMaps.load().then(items => {
+  ALL = items;
+  if (city && !ALL.some(it => it.city === city)) city = "";
+  $("lead").textContent = `${ALL.length} خريطة في ${cities().length} مدينة — دوس على أي خريطة تفتحها وتكبّرها، وتقدر تحمّلها.`;
+  renderChips(); render();
+  const a = params.get("area");
+  if (a){ const i = AGMaps.find(city || params.get("city"), a); if (i >= 0) AGMaps.open(i, shown()); }
+  const on = document.querySelector(".chip.on"); if (on) on.scrollIntoView({inline:"center", block:"nearest"});
+}).catch(e => { console.error(e); $("list").innerHTML = `<div class="empty">مقدرناش نحمّل الخرائط — جرّب تاني</div>`; });
+
+/* theme */
+function paintThemeBtn(){
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  $("themeBtn").textContent = dark ? "☀" : "☾"; $("themeBtn").title = dark ? "الوضع الفاتح" : "الوضع الغامق";
+}
+$("themeBtn").addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("ag-theme", next); } catch (e) {}
+  paintThemeBtn();
+});
+paintThemeBtn();
+</script>
+</body>
+</html>

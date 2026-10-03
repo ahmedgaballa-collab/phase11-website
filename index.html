@@ -189,6 +189,13 @@
   select:focus, .num-input:focus{border-color:var(--gold);}
   .dash-pill{border-color:var(--gold) !important;color:var(--gold-light) !important;font-weight:700;}
   .tg-pill:hover{border-color:#229ED9;}
+  .maps-pill:hover{border-color:var(--gold);}
+  .map-link{display:inline-flex;align-items:center;gap:5px;margin-top:6px;background:none;border:1px solid var(--line-soft);color:var(--gold-light);
+    border-radius:999px;padding:3px 10px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .map-link:hover{border-color:var(--gold)}
+  .map-link svg{width:13px;height:13px}
+  .map-ico{background:none;border:0;padding:0 4px;cursor:pointer;color:var(--gold-light);vertical-align:-3px}
+  .map-ico svg{width:15px;height:15px}
   .multi{position:relative;}
   .multi-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:start;
     background:var(--bg-field);border:1px solid var(--line);color:var(--paper);font-family:'Tajawal',sans-serif;
@@ -409,6 +416,10 @@
         <svg viewBox="0 0 24 24" fill="#229ED9"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg>
         <span data-i18n="telegram">قناة التليجرام</span>
       </a>
+      <a class="wish-pill maps-pill" href="/maps" style="text-decoration:none">
+        <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>
+        <span data-i18n="maps">الخرائط</span>
+      </a>
       <a class="wish-pill dash-pill" href="/dashboard" style="text-decoration:none">
         <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
         <span data-i18n="dashboard">متابعة الحجوزات</span>
@@ -567,7 +578,7 @@ const I18N = {
     title:'مستشارك العقاري | أحمد جاب الله — أراضي المرحلة 11',
     desc:'ابحث عن قطعتك في أراضي المرحلة 11 حسب المقدم والمدينة والمساحة — مع أحمد جاب الله، مستشارك العقاري.',
     brandKicker:'مستشارك العقاري', brandName:'أحمد جاب الله',
-    totalPlots:'إجمالي القطع', whatsapp:'واتساب',dashboard:'متابعة الحجوزات',telegram:'قناة التليجرام',
+    totalPlots:'إجمالي القطع', whatsapp:'واتساب',dashboard:'متابعة الحجوزات',telegram:'قناة التليجرام',maps:'الخرائط',mapBtn:'خريطة المنطقة',
 kpiReserved:'محجوز', kpiAvailable:'متاح', kpiRate:'نسبة الحجز', statusAll:'الكل',
     heroTitle1:'قد إيه المقدم اللي', heroTitleSpan:'حولته؟',
     heroLead:'اكتب المبلغ اللي حوّلته كمقدم، وهرشّحلك بنفسي كل القطع اللي تناسب المبلغ ده من إجمالي القطع.',
@@ -615,7 +626,7 @@ kpiReserved:'محجوز', kpiAvailable:'متاح', kpiRate:'نسبة الحجز'
     title:'Ahmed Gaballah Real Estate Consultant — Phase 11 Land Plots',
     desc:'Find your plot in Phase 11 land by down payment, city and area — with Ahmed Gaballah, your real estate consultant.',
     brandKicker:'Real Estate Consultant', brandName:'Ahmed Gaballah',
-    totalPlots:'Total Plots', whatsapp:'WhatsApp',dashboard:'Live bookings',telegram:'Telegram channel',
+    totalPlots:'Total Plots', whatsapp:'WhatsApp',dashboard:'Live bookings',telegram:'Telegram channel',maps:'Maps',mapBtn:'Area map',
 kpiReserved:'Reserved', kpiAvailable:'Available', kpiRate:'Booking Rate', statusAll:'All',
     heroTitle1:"What's your", heroTitleSpan:'down payment?',
     heroLead:"Enter the amount you've transferred as a down payment, and we'll match you with every plot within that amount out of the full listing.",
@@ -925,6 +936,7 @@ function renderCards(rows){
           <div class="city">${DB.cities[row[R_CITY]]}</div>
           <div class="project">${DB.projects[row[R_PROJ]]}</div>
           <div class="loc">${locationLabel(row)} · ${row[R_PLOT]}</div>
+          <button class="map-link" type="button" data-map-row="${row[R_ID]}"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg>${d.mapBtn}</button>
         </div>
         <button class="heart-btn${isWish?' active':''}" data-wish-id="${row[R_ID]}" onclick="toggleWish(${row[R_ID]})">
           <svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.9-10-9.1C.5 8.5 2 5 5.5 5c2 0 3.5 1.2 4.5 2.7C11 6.2 12.5 5 14.5 5 18 5 19.5 8.5 18 11.9 17.5 12.9 12 21 12 21z"/></svg>
@@ -975,7 +987,7 @@ function renderTable(rows){
       </button></td>
       <td>${DB.cities[row[R_CITY]]}</td>
       <td>${DB.projects[row[R_PROJ]]}</td>
-      <td>${locationLabel(row)}</td>
+      <td>${locationLabel(row)}<button class="map-ico" type="button" data-map-row="${row[R_ID]}" title="${d.mapBtn}" aria-label="${d.mapBtn}"><svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg></button></td>
       <td>${row[R_PLOT]}</td>
       <td>${fmtNum(row[R_SQM])}</td>
       <td>${fmtNum(row[R_PM])}</td>
@@ -1185,6 +1197,25 @@ try{
     <button onclick="location.reload()">حاول مرة أخرى / Try again</button>
   </div>`;
 }
+</script>
+<script src="mapviewer.js"></script>
+<script>
+/* area maps: every card/table row has a button that opens that area's map */
+(function(){
+  let byId = null;
+  document.addEventListener('click', e=>{
+    const b = e.target.closest('[data-map-row]'); if(!b) return;
+    e.preventDefault();
+    if(!byId){ byId = new Map(); DB.rows.forEach(r=>byId.set(r[R_ID], r)); }
+    const row = byId.get(+b.dataset.mapRow); if(!row) return;
+    const city = DB.cities[row[R_CITY]], area = row[R_AREA];
+    AGMaps.load().then(items=>{
+      const i = AGMaps.find(city, area);
+      if(i >= 0) AGMaps.open(i, items.filter(it=>it.city===items[i].city));
+      else location.href = '/maps?city=' + encodeURIComponent(city);
+    }).catch(()=>{ location.href = '/maps?city=' + encodeURIComponent(city); });
+  });
+})();
 </script>
 </body>
 </html>
