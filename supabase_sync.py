@@ -52,13 +52,13 @@ class Supa:
             raise RuntimeError(f"Supabase {r.status_code}: {r.text[:500]}")
         return r
 
-    def select_all(self, table, cols):
+    def select_all(self, table, cols, where=None):
         out, offset, page = [], 0, 1000
         while True:
+            params = {"select": cols, "order": "id", "limit": page, "offset": offset}
+            params.update(where or {})
             r = self._check(requests.get(
-                f"{self.rest}/{table}",
-                params={"select": cols, "order": "id", "limit": page, "offset": offset},
-                headers=self.h, timeout=60))
+                f"{self.rest}/{table}", params=params, headers=self.h, timeout=60))
             rows = r.json()
             out.extend(rows)
             if len(rows) < page:
@@ -230,12 +230,21 @@ def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print,
     t0 = time.time()
     db = Supa(url, key)
     now_iso = datetime.now(timezone.utc).isoformat()
-    existing = {r["id"]: r for r in db.select_all("plots", "id,status,is_active,zone_id")}
-
     current = {}
     for p in booked_plots:
         row = build_row(p, now_iso)
         current[row["id"]] = row
+
+    # Only what this needs (keeps Supabase egress small): every plot the DB
+    # has as booked, plus the rows for this run's booked ids it doesn't.
+    existing = {r["id"]: r for r in db.select_all("plots", "id,status,is_active,zone_id",
+                                                  {"status": "eq.unavailable"})}
+    unknown = [pid for pid in current if pid not in existing]
+    for i in range(0, len(unknown), 100):
+        chunk = unknown[i:i + 100]
+        ids = ",".join('"' + x.replace('"', '\\"') + '"' for x in chunk)
+        for r in db.select_all("plots", "id,status,is_active,zone_id", {"id": f"in.({ids})"}):
+            existing[r["id"]] = r
 
     upserts, changes = [], []
     for pid, row in current.items():
@@ -284,6 +293,25 @@ def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print,
     db.insert("scrape_runs", [summary])
     log(f"[supabase] fast sync: {len(current)} booked read, {newly} newly booked, {len(freed)} freed")
     return summary
+
+
+def log_quiet_run(started_at, found, errors=0, log=print):
+    """A pass that found no change: one tiny row so the site's 'last update'
+    stays fresh, without downloading the plots table again."""
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_KEY")
+    if not url or not key:
+        return
+    try:
+        Supa(url, key).insert("scrape_runs", [{
+            "started_at": started_at.isoformat(),
+            "finished_at": datetime.now(timezone.utc).isoformat(),
+            "status": "ok" if errors == 0 else "warn",
+            "found": found, "errors": errors, "error_message": "no change",
+        }])
+        log(f"[supabase] no change — logged the check only")
+    except Exception as e:
+        log(f"[supabase] could not log run: {e}")
 
 
 def log_failed_run(started_at, message, log=print):

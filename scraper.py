@@ -411,6 +411,19 @@ class Session:
                 out.append(e)
         return out
 
+    def request_many_nc(self, reqs):
+        """Parallel, cookieless. Returns html strings or None (failed) — no
+        retries here; callers fall back to the normal cookie path."""
+        if not reqs:
+            return []
+        args = [{"url": path, "method": m, "body": urlencode(d) if d is not None else None,
+                 "timeoutMs": TIMEOUT * 1000} for m, path, d in reqs]
+        try:
+            results = self.page.evaluate(_FETCH_MANY_NC_JS, args)
+        except Exception:
+            return [None] * len(reqs)
+        return [r["text"] if r.get("ok") and r.get("status", 500) < 400 else None for r in results]
+
     def get(self, path):
         return self._request("GET", path)
 
@@ -425,6 +438,12 @@ class Session:
 
 
 _FETCH_MANY_JS = "async (reqs) => { const one = " + _FETCH_JS.strip() + "; return await Promise.all(reqs.map(r => one(r))); }"
+
+# Same, but WITHOUT the session cookie: measured 2026-10-05 on the live site,
+# 8 zones' booked lists came back identical in 1.7s this way vs 16.9s one by
+# one — the server handles cookieless requests in parallel instead of
+# queueing them behind one session.
+_FETCH_MANY_NC_JS = _FETCH_MANY_JS.replace("credentials: 'same-origin'", "credentials: 'omit'")
 
 
 def find_project_container(a):
@@ -849,10 +868,134 @@ def harvest_booked_batch(sess, zones, log=print):
     return out
 
 
+NUCA_PARALLEL = int(os.environ.get("NUCA_PARALLEL", "6"))
+ZONE_FORMS = Path(__file__).with_name("zone_forms.json")
+
+
+def _load_forms():
+    try:
+        return json.loads(ZONE_FORMS.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _page_links(soup):
+    out = set()
+    for a in soup.find_all("a", href=re.compile(r"__doPostBack")):
+        m = re.search(r"grdPlots','Page\$(\d+)'", a.get("href", ""))
+        if m:
+            out.add(int(m.group(1)))
+    return out
+
+
+def _booked_view(html):
+    """Soup if `html` is really the BOOKED-only list (the 'booked' radio is the
+    checked one), else None. Guards against a stale form silently giving back
+    the default AVAILABLE list — that would look like hundreds of bookings."""
+    if not html or not ("grdPlots" in html or "لا يوجد" in html):
+        return None
+    soup = BeautifulSoup(html, "html.parser")
+    radio = soup.find("input", {"value": "rdShowBooked"})
+    if radio is None or not radio.has_attr("checked"):
+        return None
+    return soup
+
+
+def _page_form(soup, k):
+    form = dict(parse_hidden_fields(soup))
+    form["__EVENTTARGET"] = "ctl00$MainContent$grdPlots"
+    form["__EVENTARGUMENT"] = f"Page${k}"
+    form["ctl00$MainContent$PlotType"] = "rdShowBooked"
+    return form
+
+
+def fast_booked_chunk(sess, zones, forms, log=print):
+    """Booked lists of `zones` (<= NUCA_PARALLEL) read in parallel without the
+    session cookie, all pager pages included. Uses the saved booked-filter
+    form of each zone (skips the GET); a zone whose saved form no longer works
+    gets a fresh one. Returns {zone_id: (z, details, count, rows, ok)} — zones
+    that still fail come back ok=False so the caller can retry them the slow way."""
+    path = {z["zone_id"]: f"/ar/ViewZone.aspx?ID={z['zone_id']}" for z in zones}
+    st = {z["zone_id"]: {"z": z, "pages": {}, "bad": False} for z in zones}
+
+    def fetch_page1(zs):
+        htmls = sess.request_many_nc([("POST", path[z["zone_id"]], forms[str(z["zone_id"])]["form"]) for z in zs])
+        return list(zip(zs, htmls))
+
+    # fresh forms for zones that have none
+    missing = [z for z in zones if str(z["zone_id"]) not in forms]
+    if missing:
+        for z, html in zip(missing, sess.request_many_nc([("GET", path[z["zone_id"]], None) for z in missing])):
+            if html:
+                soup = BeautifulSoup(html, "html.parser")
+                forms[str(z["zone_id"])] = {"form": _booked_form(soup), "name": page_zone_name(soup)}
+    have = [z for z in zones if str(z["zone_id"]) in forms]
+    retry = []
+    for z, html in fetch_page1(have):
+        soup = _booked_view(html)
+        if soup is not None:
+            st[z["zone_id"]]["pages"][1] = soup
+        else:
+            retry.append(z)
+    if retry:  # saved form went stale — get a fresh one and try once more
+        for z, html in zip(retry, sess.request_many_nc([("GET", path[z["zone_id"]], None) for z in retry])):
+            if html:
+                soup = BeautifulSoup(html, "html.parser")
+                forms[str(z["zone_id"])] = {"form": _booked_form(soup), "name": page_zone_name(soup)}
+        for z, html in fetch_page1([z for z in retry if str(z["zone_id"]) in forms]):
+            soup = _booked_view(html)
+            if soup is not None:
+                st[z["zone_id"]]["pages"][1] = soup
+    for zid, x in st.items():
+        if 1 not in x["pages"]:
+            x["bad"] = True
+    # follow the pagers: from the highest page fetched so far, every linked page beyond it
+    for _ in range(60):
+        tasks = []
+        for zid, x in st.items():
+            if x["bad"]:
+                continue
+            top = max(x["pages"])
+            for k in sorted(_page_links(x["pages"][top])):
+                if k > top and k not in x["pages"]:
+                    tasks.append((zid, k, _page_form(x["pages"][top], k)))
+        if not tasks:
+            break
+        for i in range(0, len(tasks), NUCA_PARALLEL):
+            part = tasks[i:i + NUCA_PARALLEL]
+            for (zid, k, _), html in zip(part, sess.request_many_nc([("POST", path[zid], f) for zid, k, f in part])):
+                soup = _booked_view(html)
+                if soup is not None and parse_plots_table(soup):
+                    st[zid]["pages"][k] = soup
+                else:
+                    st[zid]["bad"] = True
+    out = {}
+    for zid, x in st.items():
+        z = x["z"]
+        if x["bad"]:
+            out[zid] = (z, [], 0, [], False)
+            continue
+        name = (forms.get(str(zid)) or {}).get("name", "")
+        seen, rows = set(), []
+        for k in sorted(x["pages"]):
+            for r in parse_plots_table(x["pages"][k]):
+                key = (r["block"], r["plot"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                r["reserved"] = True
+                r["page_zone_name"] = name
+                rows.append(r)
+        out[zid] = _zone_result(z, iter(rows), log)
+    return out
+
+
 ZONES_CACHE = Path(__file__).with_name("zones_cache.json")
 
 
 ROLL_STATE = Path(__file__).with_name("rolling_state.json")
+REFRESH_TS = Path(__file__).with_name("refresh_ts.txt")
+_SHARED = {"session": None}   # loop mode keeps one Chrome open across passes
 
 
 def load_zone_cache(max_age_hours=None):
@@ -899,7 +1042,7 @@ def mark_activity(zone_id):
 
 
 ZONE_SIZES = Path(__file__).with_name("zone_sizes.json")
-HOT_ZONES = int(os.environ.get("HOT_ZONES", "4"))           # re-read this many busiest zones...
+HOT_ZONES = int(os.environ.get("HOT_ZONES", "0"))           # re-read this many busiest zones...
 HOT_EVERY = int(os.environ.get("HOT_EVERY", "16"))          # ...after every N other zones
 HOT_WINDOW_H = float(os.environ.get("HOT_WINDOW_HOURS", "72"))
 
@@ -977,7 +1120,9 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
             f"is single-browser — forcing workers=1 (one zone at a time).")
         workers = 1
 
-    sess = Session(delay=delay)
+    own = _SHARED["session"] is None
+    sess = Session(delay=delay) if own else _SHARED["session"]
+    sess.delay = delay
     try:
         booked_only = mode in ("fast", "rolling")
         zones = None
@@ -999,8 +1144,18 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
         plot_total = 0
         errors = 0
         ok_zone_ids, failed_cities = set(), set()
-        refresh = (next_refresh_slice(zones, int(os.environ.get("ROLL_RUNS", "18")))
-                   if mode == "rolling" else set())
+        refresh = set()
+        if mode == "rolling":
+            # full re-reads are slow (whole available lists) — only every
+            # REFRESH_EVERY_SEC, so the booked pass between them stays fast
+            due = True
+            try:
+                due = time.time() - REFRESH_TS.stat().st_mtime >= float(os.environ.get("REFRESH_EVERY_SEC", "300"))
+            except Exception:
+                pass
+            if due:
+                refresh = next_refresh_slice(zones, int(os.environ.get("ROLL_RUNS", "18")))
+                REFRESH_TS.write_text(str(time.time()))
         if refresh:
             log(f"[rolling] full refresh this run: zones {sorted(refresh)}")
         sizes = load_zone_sizes(log) if booked_only else {}
@@ -1044,6 +1199,44 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
                 except Exception as e:
                     log(f"    [instant] notify failed: {e}")
 
+        if booked_only and NUCA_PARALLEL > 1:
+            forms = _load_forms()
+            firsts = [z for z, rep_ in order if not rep_]
+            dead_chunks = 0
+            for c in range(0, len(firsts), NUCA_PARALLEL):
+                chunk = firsts[c:c + NUCA_PARALLEL]
+                res = {}
+                if dead_chunks < 2:
+                    try:
+                        res = fast_booked_chunk(sess, chunk, forms, log=log)
+                    except Exception as e:
+                        log(f"    [fast] chunk failed ({e}) — reading those zones the normal way")
+                    if any(r[4] for r in res.values()):
+                        dead_chunks = 0
+                    else:
+                        dead_chunks += 1
+                        if dead_chunks == 2:
+                            log("    [fast] parallel reading is not working right now — normal reading for the rest of this pass")
+                for z in chunk:
+                    r = res.get(z["zone_id"])
+                    if not r or not r[4]:
+                        r = _harvest_zone_task(z, sess, log, booked_only=True)   # slow, cookie path
+                    if z["zone_id"] in refresh:
+                        if on_zone and r[4]:
+                            try:
+                                on_zone(z, r[1], True)
+                            except Exception as e:
+                                log(f"    [instant] notify failed: {e}")
+                        continue        # handled by the full read below
+                    handle(z, False, r)
+            try:
+                ZONE_FORMS.write_text(json.dumps(forms, ensure_ascii=False), encoding="utf-8")
+            except Exception:
+                pass
+            for z in zones:
+                if z["zone_id"] in refresh:
+                    handle(z, False, _harvest_zone_task(z, sess, log, booked_only=False))
+            order = []
         i = 0
         while i < len(order):
             z, repeat = order[i]
@@ -1075,7 +1268,8 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
         return (reserved_details, plot_total, all_plots, errors, ok_zone_ids, failed_cities,
                 len(seen) or len(zones), refresh & ok_zone_ids)
     finally:
-        sess.close()
+        if own:
+            sess.close()
 
 
 def load_previous(path):
@@ -1154,6 +1348,9 @@ def main():
     ap.add_argument("--mode", choices=["auto", "rolling", "fast", "full"], default="auto",
                     help="auto/rolling (default): every run reads all booked plots and fully "
                          "re-reads a rotating slice of zones — no long full runs")
+    ap.add_argument("--loop-minutes", type=float, default=None,
+                    help="keep one Chrome open and repeat passes for this many minutes "
+                         "(default: LOOP_MINUTES from .env, else 0 = single pass)")
     ap.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
                                              help="zones harvested in parallel (default 2 — raise cautiously)")
     args = ap.parse_args()
@@ -1172,13 +1369,82 @@ def main():
         print("[lock] another run is still in progress — skipping this one")
         return 3  # non-zero: run_sync.bat must not send Telegram for a skipped run
     lock.write_text(started_at.isoformat())
+    loop = args.loop_minutes if args.loop_minutes is not None else float(os.environ.get("LOOP_MINUTES", "0"))
     try:
+        if loop > 0 and not args.test:
+            return _loop(args, lock, loop)
         return _main_locked(args, started_at)
     finally:
         try:
             lock.unlink()
         except Exception:
             pass
+
+
+def _loop(args, lock, minutes):
+    """Back-to-back passes with one Chrome kept open (no relaunch + VPN warm-up
+    every pass). Telegram leftovers are sent after each pass."""
+    import telegram_notify
+    end = time.time() + minutes * 60
+    delay = args.delay if args.delay is not None else float(os.environ.get("FAST_DELAY", "0.6"))
+    passes = 0
+    try:
+        while True:
+            if _SHARED["session"] is None:
+                try:
+                    _SHARED["session"] = Session(delay=delay)
+                except Exception as e:
+                    print(f"[loop] could not open Chrome: {e}", flush=True)
+                    return 1 if passes == 0 else 0
+            started = datetime.now(timezone.utc)
+            lock.write_text(started.isoformat())
+            try:
+                rc = _main_locked(args, started)
+            except SystemExit as e:
+                rc = e.code
+            except Exception as e:
+                print(f"[loop] pass failed: {e}", flush=True)
+                rc = 1
+            passes += 1
+            if rc in (None, 0):
+                try:
+                    telegram_notify.main()
+                except Exception as e:
+                    print(f"[telegram] failed: {e}", flush=True)
+            else:
+                # a broken pass may mean Chrome / VPN died — start fresh next pass
+                try:
+                    _SHARED["session"].close()
+                except Exception:
+                    pass
+                _SHARED["session"] = None
+            if time.time() >= end:
+                return 0
+            time.sleep(float(os.environ.get("LOOP_PAUSE_SEC", "3")))
+    finally:
+        if _SHARED["session"] is not None:
+            try:
+                _SHARED["session"].close()
+            except Exception:
+                pass
+            _SHARED["session"] = None
+
+
+SYNC_TS = Path(__file__).with_name("last_sync.txt")
+
+
+def _sync_recent(max_age=600):
+    try:
+        return time.time() - SYNC_TS.stat().st_mtime < max_age
+    except Exception:
+        return False
+
+
+def _mark_synced():
+    try:
+        SYNC_TS.write_text(str(time.time()))
+    except Exception:
+        pass
 
 
 def _main_locked(args, started_at):
@@ -1238,8 +1504,15 @@ def _main_locked(args, started_at):
 
     # Supabase: the live source for the dashboard. A failure here must not
     # stop status.json / Telegram from working, so it's isolated.
+    quiet = (mode in ("fast", "rolling") and not refreshed_ok and not failed_cities
+             and current == previous and _sync_recent())
     try:
-        if mode in ("fast", "rolling"):
+        if quiet:
+            # nothing changed since the last pass — don't re-download the plots
+            # table (Supabase egress); just record that we checked
+            supabase_sync.log_quiet_run(started_at, len(current), zone_errors)
+        elif mode in ("fast", "rolling"):
+            _mark_synced()
             supabase_sync.sync_booked(reserved_details, started_at, ok_zone_ids,
                                       zone_errors=zone_errors, run_note=mode)
             if refreshed_ok and all_plots:
