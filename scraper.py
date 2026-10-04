@@ -386,6 +386,31 @@ class Session:
             raise RuntimeError(f"HTTP {result['status']} for {path}")
         return result["text"]
 
+    def request_many(self, reqs):
+        """Several GET/POSTs at once (in-page Promise.all). reqs: list of
+        (method, path, data). Returns a list of html strings / Exceptions in
+        the same order. Anything that failed is retried one by one through
+        _request (which has its own retry + fallback)."""
+        if not reqs:
+            return []
+        time.sleep(self.delay)
+        args = [{"url": path, "method": m, "body": urlencode(d) if d is not None else None,
+                 "timeoutMs": TIMEOUT * 1000} for m, path, d in reqs]
+        try:
+            results = self.page.evaluate(_FETCH_MANY_JS, args)
+        except Exception as e:
+            results = [{"ok": False, "error": str(e)}] * len(reqs)
+        out = []
+        for (m, path, d), r in zip(reqs, results):
+            if r.get("ok") and r.get("status", 500) < 400:
+                out.append(r["text"])
+                continue
+            try:
+                out.append(self._request(m, path, d))
+            except Exception as e:
+                out.append(e)
+        return out
+
     def get(self, path):
         return self._request("GET", path)
 
@@ -397,6 +422,9 @@ class Session:
             self.context.close()
         finally:
             self._pw.stop()
+
+
+_FETCH_MANY_JS = "async (reqs) => { const one = " + _FETCH_JS.strip() + "; return await Promise.all(reqs.map(r => one(r))); }"
 
 
 def find_project_container(a):
@@ -734,12 +762,21 @@ def _harvest_zone_task(z, sess, log, booked_only=False):
     run). Safe because DEFAULT_WORKERS is 1: zones are processed one at a
     time, never concurrently, so there is no cross-thread use of the same
     Playwright page."""
+    try:
+        return _zone_result(z, harvest_zone(sess, z["zone_id"], log=log, booked_only=booked_only), log)
+    except Exception as e:  # pragma: no cover — _zone_result catches already
+        log(f"    [error] zone {z['zone_id']} failed: {e}")
+        return z, [], 0, [], False
+
+
+def _zone_result(z, row_iter, log=print):
+    """Turns a zone's raw plot rows into (z, reserved_details, count, all_rows, ok)."""
     reserved_details = []
     all_rows = []
     plot_count = 0
     ok = True
     try:
-        for row in harvest_zone(sess, z["zone_id"], log=log, booked_only=booked_only):
+        for row in row_iter:
             plot_count += 1
             city, project = norm(z["city"]), norm(z["project"])
             block, plot = norm(row["block"]), norm(row["plot"])
@@ -760,6 +797,56 @@ def _harvest_zone_task(z, sess, log, booked_only=False):
         ok = False
         log(f"    [error] zone {z['zone_id']} ({z['city']}/{z['project']}) failed: {e}")
     return z, reserved_details, plot_count, all_rows, ok
+
+
+def _booked_form(soup):
+    form = dict(parse_hidden_fields(soup))
+    form["__EVENTTARGET"] = "ctl00$MainContent$rdShowBooked"
+    form["__EVENTARGUMENT"] = ""
+    form["__LASTFOCUS"] = ""
+    form["__VIEWSTATEENCRYPTED"] = ""
+    form["ctl00$MainContent$txtPlotNumber"] = ""
+    form["ctl00$MainContent$PlotType"] = "rdShowBooked"
+    return form
+
+
+def harvest_booked_batch(sess, zones, log=print):
+    """Booked-only read of several zones at once: all the zone pages are
+    fetched together, then all the booked-filter postbacks together. Extra
+    pager pages (zones with many bookings) are followed one by one.
+    Returns [(z, reserved_details, count, all_rows, ok)] in order."""
+    paths = [f"/ar/ViewZone.aspx?ID={z['zone_id']}" for z in zones]
+    pages = sess.request_many([("GET", pth, None) for pth in paths])
+    soups, posts = {}, []
+    for i, html in enumerate(pages):
+        if isinstance(html, Exception):
+            continue
+        soup = BeautifulSoup(html, "html.parser")
+        soups[i] = page_zone_name(soup)
+        posts.append((i, ("POST", paths[i], _booked_form(soup))))
+    booked = dict(zip([i for i, _ in posts], sess.request_many([r for _, r in posts])))
+    out = []
+    for i, z in enumerate(zones):
+        html = booked.get(i)
+        if html is None or isinstance(html, Exception):
+            err = pages[i] if isinstance(pages[i], Exception) else html
+            log(f"    [error] zone {z['zone_id']} ({z['city']}/{z['project']}) failed: {err}")
+            out.append((z, [], 0, [], False))
+            continue
+        soup = BeautifulSoup(html, "html.parser")
+        if soup.find(id=re.compile(r"grdPlots$")) is None and "لا يوجد" not in html:
+            log(f"    [error] zone {z['zone_id']} ({z['city']}/{z['project']}) failed: booked-filter response looks wrong")
+            out.append((z, [], 0, [], False))
+            continue
+        zname = soups.get(i)
+
+        def rows(soup=soup, i=i, z=z, zname=zname):
+            for r in _paginate_zone(sess, paths[i], soup, z["zone_id"], log=log, plot_type="rdShowBooked"):
+                r["reserved"] = True
+                r["page_zone_name"] = zname
+                yield r
+        out.append(_zone_result(z, rows(), log))
+    return out
 
 
 ZONES_CACHE = Path(__file__).with_name("zones_cache.json")
@@ -812,8 +899,8 @@ def mark_activity(zone_id):
 
 
 ZONE_SIZES = Path(__file__).with_name("zone_sizes.json")
-HOT_ZONES = int(os.environ.get("HOT_ZONES", "8"))           # re-read this many busiest zones...
-HOT_EVERY = int(os.environ.get("HOT_EVERY", "12"))          # ...after every N other zones
+HOT_ZONES = int(os.environ.get("HOT_ZONES", "4"))           # re-read this many busiest zones...
+HOT_EVERY = int(os.environ.get("HOT_EVERY", "16"))          # ...after every N other zones
 HOT_WINDOW_H = float(os.environ.get("HOT_WINDOW_HOURS", "72"))
 
 
@@ -923,43 +1010,59 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
             order = [(z, False) for z in zones]
         t0 = time.time()
         seen = set()
+        conc = max(1, int(os.environ.get("ZONE_CONCURRENCY", "4"))) if booked_only else 1
 
-        for z, repeat in order:
+        def handle(z, repeat, res):
+            nonlocal plot_total, errors
+            z, details, count, rows, ok = res
             zone_booked_only = booked_only and (repeat or z["zone_id"] not in refresh)
-            z, details, count, rows, ok = _harvest_zone_task(z, sess, log, booked_only=zone_booked_only)
-            if repeat:
-                # a re-read of a busy zone: only for faster alerts; never let a
-                # flaky repeat mark the city as failed or double-count plots
+            if not repeat:
+                seen.add(z["zone_id"])
+                if not ok or (count == 0 and not booked_only):
+                    errors += 1
                 if ok:
-                    reserved_details.extend(details)
-                    if on_zone:
-                        try:
-                            on_zone(z, details, ok)
-                        except Exception as e:
-                            log(f"    [instant] notify failed: {e}")
-                continue
-            seen.add(z["zone_id"])
-            if not ok or (count == 0 and not booked_only):
-                errors += 1
-            if ok:
-                ok_zone_ids.add(z["zone_id"])
+                    ok_zone_ids.add(z["zone_id"])
+                    if not zone_booked_only:
+                        sizes[z["zone_id"]] = count
+                    elif count and sizes.get(z["zone_id"], 0) < count:
+                        sizes[z["zone_id"]] = count
+                else:
+                    failed_cities.add(norm(z["city"]))
+                plot_total += count
+                reserved_details.extend(details)
                 if not zone_booked_only:
-                    sizes[z["zone_id"]] = count
-                elif count and sizes.get(z["zone_id"], 0) < count:
-                    sizes[z["zone_id"]] = count
-            else:
-                failed_cities.add(norm(z["city"]))
-            plot_total += count
-            reserved_details.extend(details)
-            if not zone_booked_only:
-                all_plots.extend(rows)
-            if on_zone:
+                    all_plots.extend(rows)
+                log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
+                    f"{count} plot(s), {len(details)} reserved")
+            elif ok:
+                # a re-read of a busy zone: only for faster alerts — never let a
+                # flaky repeat mark the city as failed or double-count plots
+                reserved_details.extend(details)
+            if on_zone and ok:
                 try:
                     on_zone(z, details, ok)
                 except Exception as e:
                     log(f"    [instant] notify failed: {e}")
-            log(f"[harvest] {z['city']} / {z['project']} / zone {z['zone_id']} — "
-                f"{count} plot(s), {len(details)} reserved")
+
+        i = 0
+        while i < len(order):
+            z, repeat = order[i]
+            if not booked_only or (z["zone_id"] in refresh and not repeat):
+                handle(z, repeat, _harvest_zone_task(z, sess, log, booked_only=booked_only and repeat))
+                i += 1
+                continue
+            batch = []
+            while (i < len(order) and len(batch) < conc
+                   and (order[i][1] or order[i][0]["zone_id"] not in refresh)):
+                batch.append(order[i])
+                i += 1
+            try:
+                results = harvest_booked_batch(sess, [b[0] for b in batch], log=log)
+            except Exception as e:
+                log(f"    [error] batch failed ({e}) — reading those zones one by one")
+                results = [_harvest_zone_task(b[0], sess, log, booked_only=True) for b in batch]
+            for (z, repeat), res in zip(batch, results):
+                handle(z, repeat, res)
 
         if sizes and not cities:
             save_zone_sizes(sizes)
