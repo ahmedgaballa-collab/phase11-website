@@ -115,7 +115,27 @@ def run_tests():
         r, te = many([("POST", p, f) for p, f in zip(paths, forms)], "omit")
         rese = [booked_summary(x["text"]) if x["ok"] else None for x in r]
         print(f"E POST-only parallel no-cookie: {te:5.1f}s   same as A: {rese == base}   {rese}")
-        print("\nابعت السطور اللي فوق (A لحد E) في سكرين.")
+        # F — jump straight to the last page of the booked list (Page$Last)
+        big = max(range(N), key=lambda i: (base[i] or (0, 0))[1])
+        if base[big] and base[big][1] > 1:
+            p = paths[big]
+            r, _ = many([("GET", p, None)], "same-origin")
+            f1 = scraper._booked_form(BeautifulSoup(r[0]["text"], "html.parser"))
+            r, _ = many([("POST", p, f1)], "same-origin")
+            soup1 = BeautifulSoup(r[0]["text"], "html.parser")
+            per_page = len(scraper.parse_plots_table(soup1))
+            f2 = dict(scraper.parse_hidden_fields(soup1))
+            f2.update({"__EVENTTARGET": "ctl00$MainContent$grdPlots", "__EVENTARGUMENT": "Page$Last",
+                       "ctl00$MainContent$PlotType": "rdShowBooked"})
+            t0 = time.time(); r, _ = many([("POST", p, f2)], "same-origin")
+            soupl = BeautifulSoup(r[0]["text"], "html.parser")
+            last_rows = len(scraper.parse_plots_table(soupl))
+            last_page = scraper.max_page_number(soupl) + 1
+            est = (last_page - 1) * per_page + last_rows
+            # true count by walking every page
+            true = sum(1 for _ in scraper._paginate_zone(s, p, soup1, zones[big]["zone_id"], plot_type="rdShowBooked"))
+            print(f"F Page$Last zone {zones[big]['zone_id']}: {time.time() - t0:4.1f}s  count from 2 pages = {est}   real count = {true}")
+        print("\nابعت السطور اللي فوق (A لحد F) في سكرين.")
     finally:
         s.close()
 
