@@ -106,6 +106,13 @@ main{padding-bottom:40px}
 
 /* top cities chart */
 .hbars{display:flex;flex-direction:column;gap:10px}
+.top-h{flex-wrap:wrap;row-gap:8px}
+.segs{display:flex;gap:6px;margin-inline-start:auto;flex-wrap:wrap}
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;color:var(--ink-2);font:inherit;font-size:12.5px;padding:4px 11px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.seg button.on{background:var(--ink);color:var(--surface);font-weight:700}
+.topnote{padding:10px 18px 0;font-size:12.5px;color:var(--ink-3)}
+.hb .n small{display:block;font-weight:500;color:var(--ink-3);font-size:11.5px;overflow:hidden;text-overflow:ellipsis}
 .hb{display:grid;grid-template-columns:130px 1fr 54px;align-items:center;gap:10px;font-size:13.5px}
 .hb .n{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
 .hb .track{height:14px;border-radius:6px;background:var(--track);overflow:hidden}
@@ -245,7 +252,12 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
 
   <section class="grid-2">
     <div class="card">
-      <div class="card-h"><h2>أعلى المدن حجزًا</h2><small>عدد القطع المحجوزة</small></div>
+      <div class="card-h top-h"><h2>الأعلى حجزًا</h2>
+        <div class="segs">
+          <div class="seg" id="segPeriod" role="tablist"><button type="button" data-v="day" class="on">اليوم</button><button type="button" data-v="all">الطرح كله</button></div>
+          <div class="seg" id="segLevel" role="tablist"><button type="button" data-v="city" class="on">المدن</button><button type="button" data-v="zone">المناطق</button></div>
+        </div></div>
+      <div class="topnote" id="topNote"></div>
       <div class="card-b"><div class="hbars" id="topCities"><div class="empty">جاري التحميل…</div></div></div>
     </div>
     <div class="card">
@@ -378,13 +390,52 @@ function renderCities(){
   $("cities").innerHTML = html;
 }
 
-function renderTop(){
-  const top = [...state.cities].filter(c => c.booked > 0).sort((a,b) => b.booked - a.booked).slice(0, 10);
-  if (!top.length){ $("topCities").innerHTML = `<div class="empty">لسه مفيش حجوزات</div>`; return; }
-  const max = top[0].booked;
-  $("topCities").innerHTML = top.map(c => `<div class="hb" data-tip="${esc(c.city)}: ${fmt(c.booked)} محجوز من ${fmt(c.total_plots)} (${pctTxt(pctOf(c.booked, c.total_plots))})">
-    <span class="n">${esc(c.city)}</span><span class="track"><i style="width:${100 * c.booked / max}%"></i></span><span class="v">${fmt(c.booked)}</span></div>`).join("");
+const topView = { period: "day", level: "city" };
+function topBars(items, tip){
+  if (!items.length) return "";
+  const max = items[0].n;
+  return items.map(it => `<div class="hb" data-tip="${esc(tip(it))}">
+    <span class="n">${esc(it.label)}${it.sub ? `<small>${esc(it.sub)}</small>` : ""}</span><span class="track"><i style="width:${100 * it.n / max}%"></i></span><span class="v">${fmt(it.n)}</span></div>`).join("");
 }
+function renderTop(){
+  let items = [], note = "", tip;
+  if (topView.period === "all"){
+    if (topView.level === "city"){
+      items = [...state.cities].filter(c => c.booked > 0).map(c => ({label: c.city, n: c.booked, total: c.total_plots}));
+    } else {
+      items = [...(state.zones || [])].filter(z => z.booked > 0)
+        .map(z => ({label: z.zone_name || z.project, sub: z.city + (z.zone_name ? " · " + z.project : ""), n: z.booked, total: z.total_plots}));
+    }
+    tip = it => `${it.label}: ${fmt(it.n)} محجوز من ${fmt(it.total)} (${pctTxt(pctOf(it.n, it.total))})`;
+    note = "كل الحجوزات من أول الطرح";
+  } else {
+    const rows = state.dayRows || [];
+    const m = new Map();
+    rows.forEach(r => {
+      const key = topView.level === "city" ? r.city : r.city + "|" + (r.zone_name || r.project);
+      const it = m.get(key) || {label: topView.level === "city" ? r.city : (r.zone_name || r.project),
+                                sub: topView.level === "city" ? "" : r.city + (r.zone_name ? " · " + (r.project || "") : ""), n: 0};
+      it.n++; m.set(key, it);
+    });
+    items = [...m.values()];
+    tip = it => `${it.label}: ${fmt(it.n)} قطعة اتحجزت في اليوم ده`;
+    note = state.dayLabel ? `${state.dayLabel} — ${fmt(rows.length)} قطعة · بيتغير مع اليوم اللي تختاره في الحجوزات` : "";
+  }
+  items.sort((a, b) => b.n - a.n);
+  const shown = items.slice(0, 10);
+  $("topNote").textContent = note + (items.length > 10 ? ` · أعلى 10 من ${fmt(items.length)}` : "");
+  $("topCities").innerHTML = shown.length ? topBars(shown, tip)
+    : `<div class="empty">${topView.period === "day" ? "مفيش حجوزات في اليوم ده لسه" : "لسه مفيش حجوزات"}</div>`;
+}
+function wireSeg(id, key){
+  $(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    topView[key] = b.dataset.v;
+    $(id).querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    renderTop();
+  });
+}
+wireSeg("segPeriod", "period"); wireSeg("segLevel", "level");
 
 /* ---- bookings by allocation day ----
    NUCA releases plots at 11:00 Cairo, Sunday–Thursday, except official holidays.
@@ -447,6 +498,9 @@ async function loadDay(dayStr){
     const rows = plots.map(p => ({...p, booked_at: when[p.id], late: cairoDate(when[p.id]) !== dayStr}))
       .sort((a, b) => b.booked_at.localeCompare(a.booked_at));
     renderToday(rows, isCur);
+    state.dayRows = rows;
+    state.dayLabel = (isCur && dayStr === cairoDate(Date.now())) ? "النهارده" : "تخصيص " + dayLabel(dayStr, {weekday:"long", day:"numeric", month:"long"});
+    renderTop();
     if (isCur) $("k-today").textContent = fmt(rows.length);
   } catch (e) {
     console.error(e);
