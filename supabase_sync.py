@@ -295,6 +295,18 @@ def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print,
     return summary
 
 
+def upsert_news(items, log=print):
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_KEY")
+    if not url or not key or not items:
+        return
+    rows = [{"nid": it["nid"], "title": it["title"], "summary": it.get("summary") or None,
+             "body": it.get("body") or None, "news_date": it.get("date") or None, "url": it["url"]}
+            for it in items]
+    Supa(url, key).upsert("nuca_news", rows)
+    log(f"[news] saved {len(rows)} announcement(s) to Supabase")
+
+
 def log_quiet_run(started_at, found, errors=0, log=print):
     """A pass that found no change: one tiny row so the site's 'last update'
     stays fresh, without downloading the plots table again."""

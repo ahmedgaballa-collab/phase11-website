@@ -1265,6 +1265,12 @@ def run(cities=None, delay=DEFAULT_DELAY, workers=DEFAULT_WORKERS, log=print, mo
             log(f"[warn] {errors} zone(s) returned 0 plots — check the log above for "
                 f"errors before trusting this run's numbers")
         log(f"[harvest] {plot_total} plot rows read, {len(reserved_details)} reserved")
+        if booked_only and not cities:
+            try:
+                import nuca_news
+                nuca_news.check(sess, sys.modules[__name__], log=log)
+            except Exception as e:
+                log(f"[news] check failed: {e}")
         return (reserved_details, plot_total, all_plots, errors, ok_zone_ids, failed_cities,
                 len(seen) or len(zones), refresh & ok_zone_ids)
     finally:
@@ -1552,6 +1558,12 @@ def _main_locked(args, started_at):
         today_total = update_daily_count(0)
     else:
         today_total = update_daily_count(len(unsent))
+        try:
+            import nuca_news
+            nuca_news.add_bookings(alloc_day().isoformat(),
+                                   [current_map[k]["city"] for k in newly_reserved if k in current_map])
+        except Exception as e:
+            print(f"[summary] could not count cities: {e}")
 
     print(f"\n=== SUMMARY ===")
     print(f"total reserved now: {len(current)}")
