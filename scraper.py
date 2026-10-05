@@ -888,6 +888,23 @@ def _page_links(soup):
     return out
 
 
+def _current_page(soup):
+    """The page number the grid says it is showing (the pager's non-link
+    number), or None if there is no pager."""
+    table = soup.find(id=re.compile(r"grdPlots$"))
+    if table is None:
+        return None
+    for tr in table.find_all("tr"):
+        inner = tr.find("table")
+        if inner is None:
+            continue
+        for el in inner.find_all(["span", "td"]):
+            t = el.get_text(strip=True)
+            if t.isdigit() and el.find("a") is None and el.name == "span":
+                return int(t)
+    return None
+
+
 def _booked_view(html):
     """Soup if `html` is really the BOOKED-only list (the 'booked' radio is the
     checked one), else None. Guards against a stale form silently giving back
@@ -965,7 +982,7 @@ def fast_booked_chunk(sess, zones, forms, log=print):
             part = tasks[i:i + NUCA_PARALLEL]
             for (zid, k, _), html in zip(part, sess.request_many_nc([("POST", path[zid], f) for zid, k, f in part])):
                 soup = _booked_view(html)
-                if soup is not None and parse_plots_table(soup):
+                if soup is not None and parse_plots_table(soup) and _current_page(soup) in (k, None):
                     st[zid]["pages"][k] = soup
                 else:
                     st[zid]["bad"] = True
@@ -1289,6 +1306,43 @@ def load_previous(path):
         return set()
 
 
+SEEN_BOOKED = Path(__file__).with_name("seen_booked.json")
+
+
+def load_seen_booked(previous):
+    """Every plot key ever seen booked. Seeded from status.json + Supabase so a
+    glitchy pass can't make old bookings look new."""
+    try:
+        return set(json.loads(SEEN_BOOKED.read_text(encoding="utf-8")))
+    except Exception:
+        pass
+    seen = set(previous or [])
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
+    if url and key:
+        try:
+            db = supabase_sync.Supa(url, key)
+            for r in db.select_all("plots", "city,block,plot_number", {"status": "eq.unavailable"}):
+                seen.add("|".join([norm(r["city"]), norm(r["block"]), norm(r["plot_number"])]))
+            # plus every plot that was EVER logged as booked (covers plots a
+            # glitchy pass wrongly marked free)
+            for r in db.select_all("plot_changes", "plot_id", {"to_value": "eq.unavailable"}):
+                parts = str(r["plot_id"]).split("|")
+                if len(parts) == 4:
+                    seen.add("|".join([norm(parts[0]), norm(parts[2]), norm(parts[3])]))
+            print(f"[seen] seeded {len(seen)} known booking(s)")
+        except Exception as e:
+            print(f"[seen] could not seed from Supabase: {e}")
+    save_seen_booked(seen)
+    return seen
+
+
+def save_seen_booked(seen):
+    try:
+        SEEN_BOOKED.write_text(json.dumps(sorted(seen), ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
 class InstantNotifier:
     """Posts a booking to Telegram as soon as its zone has been read, instead
     of waiting for the whole ~5-minute pass to finish. Whatever it doesn't
@@ -1298,6 +1352,7 @@ class InstantNotifier:
     def __init__(self, previous, enabled=True):
         self.prev = previous
         self.sent = set()
+        self.seen = load_seen_booked(previous) if previous else set()
         self.token = os.environ.get("TELEGRAM_BOT_TOKEN")
         self.chat = os.environ.get("TELEGRAM_CHAT_ID")
         # no baseline yet (first run on a machine) -> everything looks new; stay quiet
@@ -1306,7 +1361,8 @@ class InstantNotifier:
     def __call__(self, z, details, ok):
         if not (self.enabled and ok):
             return
-        new = [d for d in details if d["key"] not in self.prev and d["key"] not in self.sent]
+        new = [d for d in details if d["key"] not in self.prev and d["key"] not in self.sent
+               and d["key"] not in self.seen]
         if not new:
             return
         mark_activity(z["zone_id"])
@@ -1497,6 +1553,17 @@ def _main_locked(args, started_at):
         print(f"[warn] kept {len(kept)} previous booking(s) for cities with failed zones: "
               f"{', '.join(sorted(failed_cities))}")
 
+    if mode in ("fast", "rolling") and previous:
+        # A booking never "disappears" just because a booked-list read missed
+        # it (that is what re-announced old plots on 2026-10-06). It is only
+        # dropped when a full read of its zone shows it as available again.
+        avail_now = {d["key"] for d in all_plots if not d.get("reserved")}
+        missing = previous - current
+        keep = missing - avail_now
+        if keep:
+            print(f"[keep] {len(keep)} booking(s) not seen in this pass's booked lists — kept (not freed)")
+        current |= keep
+
     if len(current) == 0 and plot_total > 500 and len(previous) > 0:
         print(
             f"\n[abort] {plot_total} plot rows read but 0 came back reserved — "
@@ -1540,7 +1607,9 @@ def _main_locked(args, started_at):
     already_sent = notifier.sent
     if already_sent:
         print(f"[instant] {len(already_sent)} booking(s) were already posted to Telegram during the run")
-    unsent = [k for k in newly_reserved if k not in already_sent]
+    unsent = [k for k in newly_reserved if k not in already_sent and k not in notifier.seen]
+    if notifier.seen is not None:
+        save_seen_booked(notifier.seen | current)
 
     now = cairo_now()
     payload = {

@@ -263,9 +263,10 @@ def sync_booked(booked_plots, started_at, ok_zone_ids, zone_errors=0, log=print,
     freed = [pid for pid, r in existing.items()
              if r["status"] == "unavailable" and r.get("is_active", True)
              and r.get("zone_id") in ok and pid not in current]
-    if len(freed) > 50:
-        log(f"[supabase][guard] {len(freed)} plots would be freed in one fast run — "
-            f"skipping frees (likely a read glitch; the next full run will settle it)")
+    if freed:
+        # a booked-list read that missed a plot is NOT proof it was freed —
+        # frees are only applied from full zone reads (sync(..., zone_scope))
+        log(f"[supabase] {len(freed)} booked plot(s) not in this pass — left as booked")
         freed = []
 
     db.upsert("plots", upserts)
