@@ -484,7 +484,7 @@ function allocStartUTC(d){
 }
 const dayLabel = (d, opts) => new Date(d + "T12:00:00Z").toLocaleDateString("ar-EG", Object.assign({timeZone:"UTC"}, opts));
 async function loadHolidays(){
-  try { const rows = await get("no_allocation_days?select=day"); HOLIDAYS = new Set(rows.map(r => r.day));   // the table is the source of truth }
+  try { const rows = await get("no_allocation_days?select=day"); HOLIDAYS = new Set(rows.map(r => r.day)); /* the table is the source of truth */ }
   catch (e) { console.warn("holidays table not available yet", e); }
 }
 
