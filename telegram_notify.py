@@ -63,6 +63,15 @@ def clean_project(project, city):
     return p or project
 
 
+def block_line(item, project):
+    """Some zones put the area's name in the 'block' column (e.g. Fayoum:
+    'القطعة رقم 16 بالمنطقة الإقليمية') — don't repeat it as المربع."""
+    block = str(item.get("block") or "").strip()
+    if not block or block == str(project).strip() or block == str(item.get("project", "")).strip() or len(block) > 15:
+        return f"🔢 القطعة: {esc(item['plot'])}"
+    return f"🧱 المربع: {esc(block)}   |   🔢 القطعة: {esc(item['plot'])}"
+
+
 def title_line(seq=None, late=False, alloc_label=None):
     """Normal: '(#12 النهارده)'. A late booking (after midnight / on a day off,
     before the next 11:00 allocation) counts for the last allocation day."""
@@ -84,7 +93,7 @@ def build_message(item, seq=None, late=False, alloc_label=None):
         "",
         f"📍 <b>{esc(item['city'])}</b>",
         f"🏗️ {esc(project)}",
-        f"🧱 المربع: {esc(item['block'])}   |   🔢 القطعة: {esc(item['plot'])}",
+        block_line(item, project),
         f"📐 المساحة: {fmt_area(item['area'])}",
     ]
     if features:
