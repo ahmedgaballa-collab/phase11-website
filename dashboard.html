@@ -533,8 +533,8 @@ function renderToday(list, isCur = true){
   $("today").innerHTML = list.slice(0, 300).map(b => `<li${b.late ? ' class="is-late"' : ""}>
     <span class="when">${cairo(b.booked_at, {hour:"numeric", minute:"2-digit"})}${b.late ? `<small>${cairo(b.booked_at, {weekday:"short"})}</small>` : ""}</span>
     <div class="what"><b>${esc(b.city)}</b>${b.late ? '<span class="tag late">⏰ متأخر</span>' : ""}${b.down_payment_type === "big" ? '<span class="tag big">مقدم كبير</span>' : b.down_payment_type === "low" ? '<span class="tag low">مقدم صغير</span>' : ""}
-      <div class="sub">${esc(b.project || "")}${b.zone_name ? " · " + esc(b.zone_name) : ""}</div>
-      <div class="sub">بلوك ${esc(b.block)} · قطعة ${esc(b.plot_number)}${b.area_sqm ? " · " + fmt(Math.round(b.area_sqm)) + " م²" : ""}${b.down_payment ? " · مقدم $" + fmt(Math.round(b.down_payment)) : ""}</div></div></li>`).join("");
+      <div class="sub">${esc(b.project || "")}${b.zone_name && b.zone_name !== b.project ? " · " + esc(b.zone_name) : ""}</div>
+      <div class="sub">${b.block && b.block !== b.project && String(b.block).length <= 15 ? "بلوك " + esc(b.block) + " · " : ""}قطعة ${esc(b.plot_number)}${b.area_sqm ? " · " + fmt(Math.round(b.area_sqm)) + " م²" : ""}${b.down_payment ? " · مقدم $" + fmt(Math.round(b.down_payment)) : ""}</div></div></li>`).join("");
 }
 
 async function loadNews(){
