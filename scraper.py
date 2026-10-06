@@ -203,7 +203,7 @@ def cairo_now():
 # holiday) still belongs to the last allocation day.
 ALLOC_START_HOUR = 11
 ALLOC_OFF_WEEKDAYS = (4, 5)          # Friday, Saturday
-HOLIDAYS_FALLBACK = {"2026-10-06"}   # used if Supabase can't be reached
+HOLIDAYS_FALLBACK = {"2026-10-08"}   # used if Supabase can't be reached
 HOLIDAYS_CACHE = "holidays_cache.json"
 AR_WEEKDAYS = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
 
@@ -224,7 +224,7 @@ def load_holidays(max_age_hours=6):
                              params={"select": "day"},
                              headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=20)
             if r.ok:
-                days = sorted({row["day"] for row in r.json()} | HOLIDAYS_FALLBACK)
+                days = sorted({row["day"] for row in r.json()})   # the table is the source of truth
                 p.write_text(json.dumps(days), encoding="utf-8")
                 return set(days)
         except Exception:

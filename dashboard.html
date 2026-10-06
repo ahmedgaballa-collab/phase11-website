@@ -460,7 +460,7 @@ wireSeg("segPeriod", "period"); wireSeg("segLevel", "level");
    An allocation day runs from its 11:00 until the next allocation day's 11:00, so
    late-night / weekend / holiday bookings count for the last allocation day. */
 const ALLOC_HOUR = 11, OFF_WEEKDAYS = [5, 6]; // Fri, Sat (JS: Sun=0)
-let HOLIDAYS = new Set(["2026-10-06"]);
+let HOLIDAYS = new Set(["2026-10-08"]);
 const cairoDate = (ms) => new Intl.DateTimeFormat("en-CA", {timeZone:"Africa/Cairo"}).format(new Date(ms));
 function cairoOffsetMin(dayStr){
   const part = new Intl.DateTimeFormat("en-US", {timeZone:"Africa/Cairo", timeZoneName:"shortOffset"})
@@ -484,7 +484,7 @@ function allocStartUTC(d){
 }
 const dayLabel = (d, opts) => new Date(d + "T12:00:00Z").toLocaleDateString("ar-EG", Object.assign({timeZone:"UTC"}, opts));
 async function loadHolidays(){
-  try { const rows = await get("no_allocation_days?select=day"); HOLIDAYS = new Set([...HOLIDAYS, ...rows.map(r => r.day)]); }
+  try { const rows = await get("no_allocation_days?select=day"); HOLIDAYS = new Set(rows.map(r => r.day));   // the table is the source of truth }
   catch (e) { console.warn("holidays table not available yet", e); }
 }
 
