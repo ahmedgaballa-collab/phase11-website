@@ -27,6 +27,7 @@ SPAM_GUARD_THRESHOLD = 400  # daily allocation is up to 300 plots; more "new" re
 
 SITE_URL = "https://phase11ahmedgaballah-beta.vercel.app/"
 DASHBOARD_URL = SITE_URL + "dashboard"
+SEARCH_URL = SITE_URL + "search"
 
 FEATURE_EMOJI = {"corner": "🔺 ناصية", "garden": "🌳 حديقة", "view": "🌊 إطلالة"}
 
@@ -101,7 +102,7 @@ def build_message(item, seq=None, late=False, alloc_label=None):
     lines += [
         f"💰 المقدم: <b>{fmt_money(item['down'])}</b>",
         "",
-        f'🔍 <a href="{SITE_URL}">شوف القطع المتاحة</a>   ·   📊 <a href="{DASHBOARD_URL}">متابعة الحجوزات</a>',
+        f'🔍 <a href="{SEARCH_URL}">شوف القطع المتاحة</a>   ·   📊 <a href="{DASHBOARD_URL}">متابعة الحجوزات</a>',
     ]
     return "\n".join(lines)
 

@@ -150,7 +150,7 @@ def maybe_send_summary(scraper, telegram_notify, reason, log=print, alloc_day=No
         from datetime import date
         d = date.fromisoformat(day)
         label = f"{scraper.AR_WEEKDAYS[d.weekday()]} {d.day}/{d.month}"
-    msg = summary_message(day, label, counts, telegram_notify.SITE_URL, telegram_notify.DASHBOARD_URL)
+    msg = summary_message(day, label, counts, getattr(telegram_notify, 'SEARCH_URL', telegram_notify.SITE_URL), telegram_notify.DASHBOARD_URL)
     if telegram_notify.send(token, chat, msg):
         sent[day] = reason
         _save(SUMMARY_SENT, dict(sorted(sent.items())[-30:]))
