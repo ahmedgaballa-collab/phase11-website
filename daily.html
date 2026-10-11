@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080">
+<title>ملخص الحجز اليومي | أحمد جاب الله</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0A1120;--card:#111B30;--card2:#0E172A;--ink:#F5F1E7;--ink2:#B7C2D9;--ink3:#7E8CA8;--line:#243452;--gold:#C9A44C;--gold2:#E8CC85;--good:#7FC08A}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg)}
+body{font-family:'Tajawal',system-ui,sans-serif;color:var(--ink);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+#card{width:1080px;height:1350px;position:relative;overflow:hidden;padding:64px 70px;display:flex;flex-direction:column;gap:30px;
+  background:radial-gradient(900px 600px at 85% -10%,rgba(201,164,76,.22),transparent 60%),radial-gradient(700px 500px at -10% 110%,rgba(201,164,76,.12),transparent 60%),var(--bg)}
+.top{display:flex;align-items:center;gap:22px}
+.top img{width:96px;height:96px;object-fit:contain;border-radius:22px;background:var(--card);border:1px solid var(--line);padding:10px}
+.top .n b{display:block;font-size:40px;font-weight:900;line-height:1.1}
+.top .n small{display:block;color:var(--ink3);font-size:22px;margin-top:4px}
+.top .live{margin-inline-start:auto;font-size:22px;font-weight:800;color:var(--gold2);border:1px solid rgba(201,164,76,.45);border-radius:999px;padding:8px 20px}
+h1{margin:6px 0 0;font-size:58px;line-height:1.2;font-weight:900}
+h1 span{color:var(--gold)}
+.sub{margin:-12px 0 0;color:var(--ink2);font-size:26px}
+.hero{display:flex;align-items:center;gap:30px;background:linear-gradient(135deg,rgba(201,164,76,.22),rgba(201,164,76,.06));border:1px solid rgba(201,164,76,.45);border-radius:32px;padding:34px 40px}
+.hero .big{font-size:150px;font-weight:900;line-height:.9;color:var(--gold2)}
+.hero .t b{display:block;font-size:38px;font-weight:900}
+.hero .t small{display:block;font-size:24px;color:var(--ink2);margin-top:8px}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+.k{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:22px 26px}
+.k small{display:block;color:var(--ink3);font-size:22px;font-weight:700}
+.k b{display:block;font-size:46px;font-weight:900;margin-top:4px}
+.k.av b{color:var(--good)}
+.cities{background:var(--card);border:1px solid var(--line);border-radius:28px;padding:28px 34px;flex:1;display:flex;flex-direction:column}
+.cities h2{margin:0 0 18px;font-size:30px;font-weight:900}
+.bar{display:grid;grid-template-columns:260px 1fr 70px;align-items:center;gap:18px;margin:12px 0}
+.bar .n{font-size:28px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .tr{height:26px;border-radius:13px;background:var(--card2);overflow:hidden}
+.bar .tr i{display:block;height:100%;border-radius:13px;background:linear-gradient(90deg,var(--gold),var(--gold2))}
+.bar .v{font-size:30px;font-weight:900;text-align:left}
+.split{display:flex;gap:14px;margin-top:auto;padding-top:14px}
+.split span{flex:1;text-align:center;font-size:23px;color:var(--ink2);background:var(--card2);border-radius:16px;padding:12px}
+.split b{color:var(--ink);font-size:28px}
+.foot{display:flex;align-items:center;gap:18px;border-top:1px solid var(--line);padding-top:24px;font-size:24px;color:var(--ink2)}
+.foot b{color:var(--ink);font-weight:800}
+.foot .tg{color:#5DB8EA;font-weight:800}
+.empty{color:var(--ink3);font-size:26px;text-align:center;margin:auto}
+</style>
+</head>
+<body>
+<div id="card">
+  <div class="top"><img src="logo.png" alt="AG"><div class="n"><b>أحمد جاب الله</b><small>مستشار عقاري · المرحلة 11 — بيت الوطن</small></div><span class="live">ملخص اليوم</span></div>
+  <div><h1>حجوزات تخصيص <span id="day">—</span></h1></div>
+  <p class="sub" id="note">من 11 الصبح لحد دلوقتي</p>
+  <div class="hero"><div class="big" id="today">—</div><div class="t"><b>قطعة اتحجزت النهارده</b><small id="todayNote"></small></div></div>
+  <div class="row">
+    <div class="k"><small>إجمالي المحجوز</small><b id="booked">—</b></div>
+    <div class="k av"><small>لسه متاح</small><b id="avail">—</b></div>
+    <div class="k"><small>نسبة الحجز</small><b id="pct">—</b></div>
+  </div>
+  <div class="cities"><h2>أعلى المدن حجزاً النهارده</h2><div id="bars"><div class="empty">جاري التحميل…</div></div>
+    <div class="split" id="split"></div></div>
+  <div class="foot"><span>🔍 <b>phase11ahmedgaballah-beta.vercel.app</b></span><span style="margin-inline-start:auto" class="tg">📢 t.me/BEITALWATANAG</span></div>
+</div>
+<script>
+const SUPABASE_URL = "https://mupmkecxgnickmbdvlno.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
+const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "—" : Number(n).toLocaleString("en-US");
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function get(p){ const r = await fetch(SUPABASE_URL + "/rest/v1/" + p, {headers:{apikey:SUPABASE_ANON, Authorization:"Bearer " + SUPABASE_ANON}, cache:"no-store"}); if (!r.ok) throw new Error(r.status); return r.json(); }
+const DAYS = ["الأحد","الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+const MONTHS = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+function render(o, rows){
+  const day = rows[0]?.alloc_day || new Intl.DateTimeFormat("en-CA", {timeZone:"Africa/Cairo"}).format(new Date());
+  const d = new Date(day + "T12:00:00Z");
+  $("day").textContent = DAYS[d.getUTCDay()] + " " + d.getUTCDate() + " " + MONTHS[d.getUTCMonth()];
+  $("note").textContent = "من 11 الصبح لحد الساعة " + new Date().toLocaleTimeString("ar-EG", {timeZone:"Africa/Cairo", hour:"numeric", minute:"2-digit"});
+  $("today").textContent = fmt(rows.length);
+  const late = rows.filter(r => r.is_late).length;
+  $("todayNote").textContent = late ? `منهم ${fmt(late)} حجز متأخر` : "في كل المدن";
+  $("booked").textContent = fmt(o.booked); $("avail").textContent = fmt(o.available);
+  $("pct").textContent = o.total_plots ? (100 * o.booked / o.total_plots).toFixed(1) + "%" : "—";
+  const m = new Map(); rows.forEach(r => m.set(r.city, (m.get(r.city) || 0) + 1));
+  const top = [...m].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  $("bars").innerHTML = top.length ? top.map(([c, n]) => `<div class="bar"><span class="n">${esc(c)}</span><span class="tr"><i style="width:${100 * n / top[0][1]}%"></i></span><span class="v">${fmt(n)}</span></div>`).join("")
+    : `<div class="empty">لسه مفيش حجوزات النهارده</div>`;
+  const lo = rows.filter(r => r.down_payment_type === "low").length, hi = rows.filter(r => r.down_payment_type === "big").length;
+  $("split").innerHTML = rows.length ? `<span>مقدم صغير (لحد 40 ألف $)<br><b>${fmt(lo)}</b></span><span>مقدم كبير (أكتر من 40 ألف $)<br><b>${fmt(hi)}</b></span>` : "";
+  document.body.dataset.ready = "1";
+}
+(async () => {
+  if (new URLSearchParams(location.search).has("demo")){
+    const cities = [["الشيخ زايد",38],["العبور الجديدة",34],["السادات",32],["برج العرب الجديدة",24],["المنصورة الجديدة",9],["بدر",8]];
+    const rows = []; cities.forEach(([c, n]) => { for (let i = 0; i < n; i++) rows.push({city:c, down_payment_type: i % 4 ? "low" : "big", is_late:false, alloc_day:"2026-10-11"}); });
+    return render({booked:2315, available:13230, total_plots:15545}, rows);
+  }
+  try {
+    const [ov, rows] = await Promise.all([get("v_stats_overall"), get("v_today_bookings?select=city,down_payment_type,is_late,alloc_day&limit=2000")]);
+    render(ov[0] || {}, rows);
+  } catch (e) { $("bars").innerHTML = `<div class="empty">مقدرناش نحمّل البيانات</div>`; document.body.dataset.ready = "error"; }
+})();
+</script>
+</body>
+</html>
