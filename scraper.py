@@ -1443,6 +1443,29 @@ def main():
             pass
 
 
+def _maybe_daily_post():
+    """8 PM on allocation days: daily_post.py (its own process — it drives its
+    own headless Chrome) sends Ahmed the Facebook post kit. Cheap check here."""
+    try:
+        now = cairo_now()
+        if now.hour < int(os.environ.get("DAILY_POST_HOUR", "20")) or alloc_day(now) != now.date():
+            return
+        sent_file = Path(__file__).with_name("daily_post_sent.json")
+        sent = json.loads(sent_file.read_text()) if sent_file.exists() else {}
+        if sent.get(now.date().isoformat()) or not os.environ.get("TELEGRAM_OWNER_CHAT_ID"):
+            return
+        script = Path(__file__).with_name("daily_post.py")
+        lk = Path(__file__).with_name("daily_post.lock")
+        if script.exists() and not (lk.exists() and time.time() - lk.stat().st_mtime < 600):
+            import subprocess
+            subprocess.Popen([sys.executable, str(script)], cwd=str(script.parent),
+                             stdout=open(Path(__file__).with_name("daily_post.log"), "a"),
+                             stderr=subprocess.STDOUT)
+            print("[daily] building today's Facebook post kit", flush=True)
+    except Exception as e:
+        print(f"[daily] could not start: {e}", flush=True)
+
+
 def _loop(args, lock, minutes):
     """Back-to-back passes with one Chrome kept open (no relaunch + VPN warm-up
     every pass). Telegram leftovers are sent after each pass."""
@@ -1473,6 +1496,7 @@ def _loop(args, lock, minutes):
                     telegram_notify.main()
                 except Exception as e:
                     print(f"[telegram] failed: {e}", flush=True)
+                _maybe_daily_post()
             else:
                 # a broken pass may mean Chrome / VPN died — start fresh next pass
                 try:
