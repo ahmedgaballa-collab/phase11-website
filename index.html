@@ -190,6 +190,8 @@
   .dash-pill{border-color:var(--gold) !important;color:var(--gold-light) !important;font-weight:700;}
   .tg-pill:hover{border-color:#229ED9;}
   .maps-pill:hover{border-color:var(--gold);}
+  .agent-about{display:inline-block;margin-top:8px;color:var(--gold-light);font-weight:700;font-size:13px;text-decoration:none}
+  .agent-about:hover{text-decoration:underline}
   .map-link{display:inline-flex;align-items:center;gap:5px;margin-top:6px;background:none;border:1px solid var(--line-soft);color:var(--gold-light);
     border-radius:999px;padding:3px 10px;font:inherit;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap}
   .map-link:hover{border-color:var(--gold)}
@@ -548,6 +550,7 @@
       <div class="agent-name-ar" data-i18n="brandName">أحمد جاب الله</div>
       <div class="agent-name-en eng">AHMED GABALLAH</div>
       <div class="agent-tagline" data-i18n="tagline">مستشارك العقاري · Real Estate Consultant</div>
+      <a class="agent-about" href="/about" data-i18n="aboutLink">تعرّف عليّ وعلى المنصة ←</a>
       <div class="agent-actions">
         <a class="agent-btn whatsapp" id="footerWaLink" href="#" target="_blank" rel="noopener">
           <svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.35 5.07L2 22l5.06-1.32A9.94 9.94 0 0012 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm5.2 14.2c-.22.62-1.28 1.18-1.77 1.24-.45.06-1.02.09-1.65-.1-.38-.12-.87-.28-1.5-.55-2.64-1.14-4.36-3.8-4.5-3.98-.13-.18-1.08-1.44-1.08-2.75 0-1.3.68-1.94.92-2.2.24-.26.53-.33.7-.33.18 0 .35 0 .5.01.16.01.38-.06.6.46.22.53.75 1.83.82 1.96.07.13.11.29.02.47-.09.18-.13.29-.26.44-.13.16-.28.35-.4.47-.13.13-.27.28-.12.55.16.26.7 1.16 1.5 1.88 1.04.93 1.91 1.22 2.17 1.36.26.13.42.11.57-.07.16-.18.66-.77.84-1.04.18-.26.35-.22.6-.13.24.09 1.54.73 1.8.86.27.13.44.2.51.31.07.11.07.62-.15 1.24z"/></svg>
@@ -578,7 +581,7 @@ const I18N = {
     title:'مستشارك العقاري | أحمد جاب الله — أراضي المرحلة 11',
     desc:'ابحث عن قطعتك في أراضي المرحلة 11 حسب المقدم والمدينة والمساحة — مع أحمد جاب الله، مستشارك العقاري.',
     brandKicker:'مستشارك العقاري', brandName:'أحمد جاب الله',
-    totalPlots:'إجمالي القطع', whatsapp:'واتساب',dashboard:'متابعة الحجوزات',telegram:'قناة التليجرام',maps:'الخرائط',mapBtn:'خريطة المنطقة',
+    totalPlots:'إجمالي القطع', whatsapp:'واتساب',dashboard:'متابعة الحجوزات',telegram:'قناة التليجرام',maps:'الخرائط',mapBtn:'خريطة المنطقة',aboutLink:'تعرّف عليّ وعلى المنصة ←',
 kpiReserved:'محجوز', kpiAvailable:'متاح', kpiRate:'نسبة الحجز', statusAll:'الكل',
     heroTitle1:'قد إيه المقدم اللي', heroTitleSpan:'حولته؟',
     heroLead:'اكتب المبلغ اللي حوّلته كمقدم، وهرشّحلك بنفسي كل القطع اللي تناسب المبلغ ده من إجمالي القطع.',
@@ -626,7 +629,7 @@ kpiReserved:'محجوز', kpiAvailable:'متاح', kpiRate:'نسبة الحجز'
     title:'Ahmed Gaballah Real Estate Consultant — Phase 11 Land Plots',
     desc:'Find your plot in Phase 11 land by down payment, city and area — with Ahmed Gaballah, your real estate consultant.',
     brandKicker:'Real Estate Consultant', brandName:'Ahmed Gaballah',
-    totalPlots:'Total Plots', whatsapp:'WhatsApp',dashboard:'Live bookings',telegram:'Telegram channel',maps:'Maps',mapBtn:'Area map',
+    totalPlots:'Total Plots', whatsapp:'WhatsApp',dashboard:'Live bookings',telegram:'Telegram channel',maps:'Maps',mapBtn:'Area map',aboutLink:'About me & the platform →',
 kpiReserved:'Reserved', kpiAvailable:'Available', kpiRate:'Booking Rate', statusAll:'All',
     heroTitle1:"What's your", heroTitleSpan:'down payment?',
     heroLead:"Enter the amount you've transferred as a down payment, and we'll match you with every plot within that amount out of the full listing.",
