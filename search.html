@@ -183,7 +183,7 @@
   /* ---------- Filters ---------- */
   .filters{padding:22px 0; border-bottom:1px solid var(--line-soft);}
   .filters-head{display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;}
-  .filters-head h2{font-size:13px; color:var(--paper-faint); font-weight:700; margin:0; letter-spacing:.2px;}
+  .filters-head h2{font-size:15px; color:var(--gold-light); font-weight:700; margin:0; letter-spacing:.2px;}
   .filters-head .chev{color:var(--paper-faint); font-size:13px; transition:transform .2s;}
   .filters-body{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:16px;}
   .filters-body.collapsed{display:none;}
@@ -388,7 +388,9 @@
     .brand-mark{width:44px;height:44px;}
   }
   @media (max-width:480px){
-    .filters-body{grid-template-columns:1fr 1fr;}
+    .filters-body{grid-template-columns:1fr 1fr; gap:12px;}
+    .filters{padding:16px 0;}
+    .clear-link{grid-column:span 2;}
     .total-pill{display:none;}
     .wa-float{width:48px; height:48px; bottom:16px; inset-inline-start:16px;}
     .brand-name, .brand-sub, .brand-kicker{white-space:nowrap;}
@@ -466,7 +468,7 @@
 <section class="filters">
   <div class="wrap">
     <div class="filters-head" id="filtersHead">
-      <h2 data-i18n="filtersToggle">فلاتر إضافية (المدينة، المساحة، المميزات)</h2>
+      <h2 data-i18n="filtersToggle">فلتر النتايج (المدينة، المساحة، المميزات)</h2>
       <span class="chev" id="filtersChev">▾</span>
     </div>
     <div class="filters-body" id="filtersBody">
@@ -586,7 +588,7 @@ kpiReserved:'محجوز', kpiAvailable:'متاح', kpiRate:'نسبة الحجز'
     heroTitle1:'قد إيه المقدم اللي', heroTitleSpan:'حولته؟',
     heroLead:'اكتب المبلغ اللي حوّلته كمقدم، وهرشّحلك بنفسي كل القطع اللي تناسب المبلغ ده من إجمالي القطع.',
     budgetLabel:'المبلغ اللي حوّلته كمقدم', budgetPlaceholder:'25,000',
-    filtersToggle:'فلاتر إضافية (المدينة، المساحة، المميزات)',
+    filtersToggle:'فلتر النتايج (المدينة، المساحة، المميزات)',
     cityLabel:'المدينة', allCities:'كل المدن',
     projectLabel:'المشروع', allProjects:'كل المشاريع',
     areaLabel:'المساحة (م²)', areaFrom:'من', areaTo:'إلى',
@@ -634,7 +636,7 @@ kpiReserved:'Reserved', kpiAvailable:'Available', kpiRate:'Booking Rate', status
     heroTitle1:"What's your", heroTitleSpan:'down payment?',
     heroLead:"Enter the amount you've transferred as a down payment, and we'll match you with every plot within that amount out of the full listing.",
     budgetLabel:"Amount you've transferred as down payment", budgetPlaceholder:'25,000',
-    filtersToggle:'More filters (city, area, features)',
+    filtersToggle:'Filter results (city, area, features)',
     cityLabel:'City', allCities:'All cities',
     projectLabel:'Project', allProjects:'All projects',
     areaLabel:'Area (m²)', areaFrom:'Min', areaTo:'Max',
@@ -1185,10 +1187,6 @@ function init(){
     });
     paint();
   })();
-  if(window.innerWidth <= 760){
-    document.getElementById('filtersBody').classList.add('collapsed');
-    document.getElementById('filtersChev').style.transform='rotate(-90deg)';
-  }
 }
 
 try{
