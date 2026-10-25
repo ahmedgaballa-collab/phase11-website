@@ -39,7 +39,12 @@
     ".agmv button:hover,.agmv a.agmv-b:hover{background:rgba(255,255,255,.16)}" +
     ".agmv a.agmv-wa{background:#1FA855;border-color:#1FA855}" +
     ".agmv-stage{position:relative;flex:1;overflow:hidden;cursor:grab}.agmv-stage.drag{cursor:grabbing}" +
-    ".agmv-stage img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;will-change:transform;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.5)}" +
+    ".agmv-layer{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;box-shadow:0 10px 40px rgba(0,0,0,.5);background:#fff}" +
+    ".agmv-layer img{position:absolute;left:0;top:0;width:100%;height:100%;max-width:none}" +
+    ".agmv-layer svg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
+    ".agmv-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#F5F1E7;background:rgba(255,255,255,.08);border-radius:999px;padding:4px 10px}" +
+    ".agmv-st i{width:12px;height:12px;border-radius:50%;background:#B3121F;display:inline-block;border:2px solid #fff}" +
+    ".agmv.hide-res .agmv-layer svg{display:none}" +
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
@@ -50,7 +55,7 @@
   }
 
   /* ---------- viewer ---------- */
-  var root, stage, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
+  var root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
   var natW = 0, natH = 0, list = [], pos = 0, s = 1, tx = 0, ty = 0, minS = 1, pointers = {}, pinch = null, drag = null, lastTap = 0, pushed = false;
 
   function build() {
@@ -60,13 +65,13 @@
       '<div class="agmv-top"><button type="button" data-a="close" aria-label="إغلاق">✕</button>' +
       '<div class="agmv-t"><b></b><small></small></div>' +
       '<button type="button" data-a="prev" aria-label="الخريطة اللي قبلها">›</button><button type="button" data-a="next" aria-label="الخريطة اللي بعدها">‹</button></div>' +
-      '<div class="agmv-stage"><img alt=""><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
+      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><svg xmlns="http://www.w3.org/2000/svg"></svg></div><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
       '<div class="agmv-bot"><button type="button" data-a="in" aria-label="تكبير">＋</button><button type="button" data-a="out" aria-label="تصغير">－</button>' +
-      '<button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
+      '<span class="agmv-st" hidden><i></i><span></span></span><button type="button" data-a="res" hidden>إخفاء المحجوز</button><button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
       '<a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
       '<a class="agmv-b agmv-wa" target="_blank" rel="noopener"><span>واتساب</span><span class="agmv-txt">— اسأل عن المنطقة دي</span></a></div>';
     document.body.appendChild(root);
-    stage = root.querySelector(".agmv-stage"); img = stage.querySelector("img");
+    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("svg"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
     titleB = root.querySelector(".agmv-t b"); titleS = root.querySelector(".agmv-t small");
     loadEl = root.querySelector(".agmv-load"); hintEl = root.querySelector(".agmv-hint");
     dlA = root.querySelector('[data-a="dl"]'); waA = root.querySelector(".agmv-wa");
@@ -80,6 +85,7 @@
       else if (a === "in") zoomAt(1.6, stage.clientWidth / 2, stage.clientHeight / 2);
       else if (a === "out") zoomAt(1 / 1.6, stage.clientWidth / 2, stage.clientHeight / 2);
       else if (a === "fit") fit();
+      else if (a === "res") { var h = root.classList.toggle("hide-res"); resB.textContent = h ? "إظهار المحجوز" : "إخفاء المحجوز"; }
     });
     stage.addEventListener("wheel", function (e) {
       e.preventDefault(); var r = stage.getBoundingClientRect();
@@ -100,7 +106,7 @@
     window.addEventListener("popstate", function () { if (pushed) { pushed = false; hide(); } });
   }
 
-  function apply() { img.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + s + ")"; }
+  function apply() { layer.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + s + ")"; }
   function clamp() {
     var W = stage.clientWidth, H = stage.clientHeight, w = natW * s, h = natH * s;
     tx = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, tx));
@@ -152,6 +158,35 @@
     if (!Object.keys(pointers).length) { drag = null; stage.classList.remove("drag"); }
   }
 
+  /* ---------- live booked overlay (status.json, refreshed every 5 min by the sync job) ---------- */
+  var STATUS = "status.json", resSet = null, resAt = 0, resLoading = null;
+  function loadStatus() {
+    if (resSet && Date.now() - resAt < 120000) return Promise.resolve(resSet);
+    if (!resLoading) resLoading = fetch(STATUS + "?t=" + Math.floor(Date.now() / 60000), { cache: "no-store" }).then(function (r) { return r.json(); })
+      .then(function (d) { var s = new Set(); (d.reserved || []).forEach(function (k) { var p = String(k).split("|"); if (p.length >= 3) s.add(norm(p[0]) + "|" + norm(p[p.length - 2]) + "|" + norm(p[p.length - 1])); });
+        resSet = s; resAt = Date.now(); resLoading = null; return s; })
+      .catch(function () { resLoading = null; return resSet || new Set(); });
+    return resLoading;
+  }
+  function drawReserved(it) {
+    svg.innerHTML = ""; stEl.hidden = true; resB.hidden = true;
+    if (!it.plots || !it.plots.length) return;
+    svg.setAttribute("viewBox", "0 0 " + it.w + " " + it.h);
+    loadStatus().then(function (set) {
+      if (list[pos] !== it) return;
+      var c = norm(it.city), r = Math.max(10, it.r || 14), out = [], n = 0;
+      it.plots.forEach(function (p) {
+        if (!set.has(c + "|" + norm(it.blocks[p[1]]) + "|" + norm(p[0]))) return; n++;
+        var x = p[2], y = p[3], d = r * 0.62;
+        out.push('<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="rgba(179,18,31,.62)" stroke="#fff" stroke-width="' + (r / 6) + '"/>' +
+          '<path d="M' + (x - d) + ' ' + (y - d) + 'L' + (x + d) + ' ' + (y + d) + 'M' + (x + d) + ' ' + (y - d) + 'L' + (x - d) + ' ' + (y + d) + '" stroke="#fff" stroke-width="' + (r / 4) + '" stroke-linecap="round"/>');
+      });
+      svg.innerHTML = out.join("");
+      stEl.hidden = false; resB.hidden = !n;
+      stEl.querySelector("span").textContent = n ? ("محجوز " + n + " من " + it.plots.length + " · متاح " + (it.plots.length - n)) : ("كل القطع متاحة (" + it.plots.length + ")");
+    });
+  }
+
   function show() {
     var it = list[pos];
     titleB.textContent = it.area; titleS.textContent = it.city + (list.length > 1 ? "  ·  " + (pos + 1) + " من " + list.length : "");
@@ -161,7 +196,8 @@
     loadEl.style.display = "block"; hintEl.style.opacity = 1;
     setTimeout(function () { hintEl.style.opacity = 0; }, 2500);
     // low-res thumb first so something shows instantly, then the sharp file
-    img.onload = null; img.src = it.thumb; img.style.width = it.w + "px"; img.style.height = it.h + "px";
+    img.onload = null; img.src = it.thumb; layer.style.width = it.w + "px"; layer.style.height = it.h + "px";
+    drawReserved(it);
     natW = it.w; natH = it.h;
     fit();
     var hi = new Image(), want = it.file;
