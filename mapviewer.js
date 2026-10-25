@@ -39,7 +39,12 @@
     ".agmv button:hover,.agmv a.agmv-b:hover{background:rgba(255,255,255,.16)}" +
     ".agmv a.agmv-wa{background:#1FA855;border-color:#1FA855}" +
     ".agmv-stage{position:relative;flex:1;overflow:hidden;cursor:grab}.agmv-stage.drag{cursor:grabbing}" +
-    ".agmv-stage img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;will-change:transform;background:#fff;box-shadow:0 10px 40px rgba(0,0,0,.5)}" +
+    ".agmv-layer{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;box-shadow:0 10px 40px rgba(0,0,0,.5);background:#fff}" +
+    ".agmv-layer img{position:absolute;left:0;top:0;width:100%;height:100%;max-width:none}" +
+    ".agmv-layer canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
+    ".agmv-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#F5F1E7;background:rgba(255,255,255,.08);border-radius:999px;padding:4px 10px}" +
+    ".agmv-st i{width:13px;height:13px;border-radius:3px;background:#C8282C;display:inline-block;border:1px solid #fff}" +
+    ".agmv.hide-res .agmv-layer canvas{display:none}" +
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
@@ -50,7 +55,7 @@
   }
 
   /* ---------- viewer ---------- */
-  var root, stage, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
+  var root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
   var natW = 0, natH = 0, list = [], pos = 0, s = 1, tx = 0, ty = 0, minS = 1, pointers = {}, pinch = null, drag = null, lastTap = 0, pushed = false;
 
   function build() {
@@ -60,13 +65,13 @@
       '<div class="agmv-top"><button type="button" data-a="close" aria-label="إغلاق">✕</button>' +
       '<div class="agmv-t"><b></b><small></small></div>' +
       '<button type="button" data-a="prev" aria-label="الخريطة اللي قبلها">›</button><button type="button" data-a="next" aria-label="الخريطة اللي بعدها">‹</button></div>' +
-      '<div class="agmv-stage"><img alt=""><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
+      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
       '<div class="agmv-bot"><button type="button" data-a="in" aria-label="تكبير">＋</button><button type="button" data-a="out" aria-label="تصغير">－</button>' +
-      '<button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
+      '<span class="agmv-st" hidden><i></i><span></span></span><button type="button" data-a="res" hidden>إخفاء المحجوز</button><button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
       '<a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
       '<a class="agmv-b agmv-wa" target="_blank" rel="noopener"><span>واتساب</span><span class="agmv-txt">— اسأل عن المنطقة دي</span></a></div>';
     document.body.appendChild(root);
-    stage = root.querySelector(".agmv-stage"); img = stage.querySelector("img");
+    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
     titleB = root.querySelector(".agmv-t b"); titleS = root.querySelector(".agmv-t small");
     loadEl = root.querySelector(".agmv-load"); hintEl = root.querySelector(".agmv-hint");
     dlA = root.querySelector('[data-a="dl"]'); waA = root.querySelector(".agmv-wa");
@@ -80,6 +85,7 @@
       else if (a === "in") zoomAt(1.6, stage.clientWidth / 2, stage.clientHeight / 2);
       else if (a === "out") zoomAt(1 / 1.6, stage.clientWidth / 2, stage.clientHeight / 2);
       else if (a === "fit") fit();
+      else if (a === "res") { var h = root.classList.toggle("hide-res"); resB.textContent = h ? "إظهار المحجوز" : "إخفاء المحجوز"; }
     });
     stage.addEventListener("wheel", function (e) {
       e.preventDefault(); var r = stage.getBoundingClientRect();
@@ -100,7 +106,7 @@
     window.addEventListener("popstate", function () { if (pushed) { pushed = false; hide(); } });
   }
 
-  function apply() { img.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + s + ")"; }
+  function apply() { layer.style.transform = "translate(" + tx + "px," + ty + "px) scale(" + s + ")"; }
   function clamp() {
     var W = stage.clientWidth, H = stage.clientHeight, w = natW * s, h = natH * s;
     tx = w <= W ? (W - w) / 2 : Math.min(0, Math.max(W - w, tx));
@@ -152,6 +158,121 @@
     if (!Object.keys(pointers).length) { drag = null; stage.classList.remove("drag"); }
   }
 
+    /* booked plots come live from Supabase (same source as /search and /dashboard, synced every 5 min); status.json is only a fallback */
+  var STATUS = "status.json";
+  var SB_URL = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
+  var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
+  // A plot is "available" only if the live DB lists it as available & active for its city.
+  // Anything else is booked — this also covers plots/zones NUCA already removed from the site
+  // (fully booked) that the DB never saw or marked inactive.
+  var cityAvail = {};
+  function sbAvail(city) {
+    var keys = [];
+    function page(from) {
+      return fetch(SB_URL + "plots?select=block,plot_number&status=eq.available&is_active=eq.true&order=id&city=eq." + encodeURIComponent(city), {
+        cache: "no-store", headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Range-Unit": "items", Range: from + "-" + (from + 999) } })
+        .then(function (r) { if (!r.ok) throw new Error("sb " + r.status); return r.json(); })
+        .then(function (rows) { rows.forEach(function (r) { keys.push(norm(r.block) + "|" + norm(r.plot_number)); }); return rows.length < 1000 || from > 50000 ? keys : page(from + 1000); });
+    }
+    return page(0);
+  }
+  function fileKeys() { return fetch(STATUS + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) { return d.reserved || []; }); }
+  // resolves to fn(plot) -> true if booked
+  function loadStatus(it) {
+    var c = it.city, hit = cityAvail[c];
+    if (!hit || Date.now() - hit.at > 60000) {
+      hit = cityAvail[c] = { at: Date.now(), p: sbAvail(c).then(function (list) { return { avail: new Set(list) }; })
+        .catch(function () { return fileKeys().then(function (list) { var s = new Set(); list.forEach(function (k) { var q = String(k).split("|"); if (q.length >= 3) s.add(norm(q[0]) + "|" + norm(q[q.length - 2]) + "|" + norm(q[q.length - 1])); }); return { res: s }; })
+          .catch(function () { return { res: new Set() }; }); }) };
+    }
+    return hit.p.then(function (d) {
+      return function (pl) { var k = norm(it.blocks[pl[1]]) + "|" + norm(pl[0]); return d.avail ? !d.avail.has(k) : d.res.has(norm(it.city) + "|" + k); };
+    });
+  }
+  var resTimer = null, imgCache = {};
+  function fullImg(src) {
+    if (!imgCache[src]) imgCache[src] = new Promise(function (ok, no) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = no; im.src = src; });
+    return imgCache[src];
+  }
+  // colour the booked plots themselves: flood-fill each plot's yellow area from its centre
+  function paintBooked(it, im, hits) {
+    var W = it.w, H = it.h; svg.width = W; svg.height = H;
+    var ctx = svg.getContext("2d"); ctx.clearRect(0, 0, W, H);
+    if (!hits.length) return;
+    var t = document.createElement("canvas"); t.width = W; t.height = H; var tc = t.getContext("2d"); tc.drawImage(im, 0, 0, W, H);
+    var src = tc.getImageData(0, 0, W, H).data, out = ctx.createImageData(W, H), od = out.data, seen = new Uint8Array(W * H);
+    var r = Math.max(8, it.r || 14);
+    // the offered-plot yellow of this map = most common yellowish colour (sampled)
+    var hist = {}, Y = null, hb = 0;
+    for (var i0 = 0; i0 < src.length; i0 += 4 * 7) { var R0 = src[i0], G0 = src[i0 + 1], B0 = src[i0 + 2];
+      if (R0 > 190 && G0 > 140 && B0 < G0 - 40 && R0 - G0 < 90) { var hk = (R0 >> 3) + "," + (G0 >> 3) + "," + (B0 >> 3); hist[hk] = (hist[hk] || 0) + 1; if (hist[hk] > hb) { hb = hist[hk]; Y = [R0, G0, B0]; } } }
+    function isY(j) { if (!Y) return false; var a = src[j] - Y[0], b = src[j + 1] - Y[1], c = src[j + 2] - Y[2]; return a * a + b * b + c * c < 2000; }
+    var hitSet = new Set(hits);
+    hits.forEach(function (p) {
+      var cx = Math.round(p[2]), cy = Math.round(p[3]), rr = Math.round(Math.max(r * 1.2, 34)), cands = [];
+      // seeds = plot-yellow pixels around the label, nearest first (the label text and the holes inside digits are skipped by retrying)
+      for (var dy = -rr; dy <= rr; dy++) for (var dx = -rr; dx <= rr; dx++) {
+        var x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        if (isY((y * W + x) * 4)) cands.push([dx * dx + dy * dy, y * W + x]);
+      }
+      cands.sort(function (u, v) { return u[0] - v[0]; });
+      if (!cands.length) { ctx.fillStyle = "rgba(200,40,44,.85)"; ctx.beginPath(); ctx.arc(cx, cy, r * .9, 0, 7); ctx.fill(); return; }
+      var sr = Y[0], sg = Y[1], sb = Y[2], cap = Math.round(Math.max(r * r * 80, 40000)), B6 = Math.max(r * 6, 170), px = [], x0 = cx - B6, x1 = cx + B6, y0 = cy - B6, y1 = cy + B6;
+      // never claim pixels closer to an AVAILABLE plot's centre (stops red leaking onto open plots); booked neighbours may share
+      var nb = it.plots.filter(function (o) { return o !== p && !hitSet.has(o) && Math.abs(o[2] - cx) < B6 * 1.4 && Math.abs(o[3] - cy) < B6 * 1.4; });
+      function mine(nx, ny) { var d0 = (nx - cx) * (nx - cx) + (ny - cy) * (ny - cy); for (var t = 0; t < nb.length; t++) { var ex = nx - nb[t][2], ey = ny - nb[t][3]; if (ex * ex + ey * ey < d0) return false; } return true; }
+      var big = Math.max(r * r * 1.5, 600), tries = 0;
+      for (var ci = 0; ci < cands.length && px.length < big && tries < 40; ci++) {
+        var seed = cands[ci][1]; if (seen[seed] || !mine(seed % W, (seed / W) | 0)) continue; tries++;
+        var st = [seed]; seen[seed] = 1;
+        while (st.length && px.length < cap) {
+          var q = st.pop(); px.push(q); var qx = q % W, qy = (q / W) | 0;
+          [q - 1, q + 1, q - W, q + W].forEach(function (n, k) {
+            if (k === 0 && qx === 0 || k === 1 && qx === W - 1 || n < 0 || n >= W * H || seen[n]) return;
+            var nx = n % W, ny = (n / W) | 0; if (nx < x0 || nx > x1 || ny < y0 || ny > y1 || !mine(nx, ny)) return;
+            var j = n * 4, dr = src[j] - sr, dg = src[j + 1] - sg, db = src[j + 2] - sb;
+            if (dr * dr + dg * dg + db * db < 2500 || (src[j] > 175 && src[j + 1] > 120 && src[j + 2] < src[j + 1] - 35 && src[j] - src[j + 1] < 100)) { seen[n] = 1; st.push(n); }
+          });
+        }
+      }
+      if (px.length >= cap) { px.forEach(function (q) { seen[q] = 0; }); ctx.fillStyle = "rgba(200,40,44,.85)"; ctx.beginPath(); ctx.arc(cx, cy, r * .9, 0, 7); ctx.fill(); return; }
+      // booked plot -> solid red, and the text inside it -> white so it stays readable
+      px.forEach(function (q) { var j = q * 4; od[j] = 200; od[j + 1] = 40; od[j + 2] = 44; od[j + 3] = 255; });
+    });
+    // label text of every booked plot -> white: ink pixels (dark or red) in the label box that sit between red on both sides
+    function red(q) { return od[q * 4 + 3] === 255 && od[q * 4] === 200 && od[q * 4 + 1] === 40; }
+    hits.forEach(function (p) {
+      var cx = Math.round(p[2]), cy = Math.round(p[3]), bw = Math.round(Math.max(r * 1.2, 34) * 1.6), bh = Math.round(Math.max(r * 1.2, 34) * 1.3);
+      for (var yy = Math.max(0, cy - bh); yy <= Math.min(H - 1, cy + bh); yy++) for (var xx = Math.max(0, cx - bw); xx <= Math.min(W - 1, cx + bw); xx++) {
+        var q2 = yy * W + xx; if (red(q2)) continue;
+        var j2 = q2 * 4, sR = src[j2], sG = src[j2 + 1], sB = src[j2 + 2], lum = sR * .3 + sG * .59 + sB * .11;
+        if (!(lum < 150 || (sR > 140 && sG < 110 && sB < 110))) continue;
+        var l = 0, rt = 0, u = 0, d = 0, k;
+        for (k = 1; k < 30 && !l; k++) if (xx - k >= 0 && red(q2 - k)) l = 1;
+        for (k = 1; k < 30 && !rt; k++) if (xx + k < W && red(q2 + k)) rt = 1;
+        for (k = 1; k < 30 && !u; k++) if (yy - k >= 0 && red(q2 - k * W)) u = 1;
+        for (k = 1; k < 30 && !d; k++) if (yy + k < H && red(q2 + k * W)) d = 1;
+        if (l && rt && u && d) { var a = Math.max(0, Math.min(255, (230 - lum) * 2.2));
+          od[j2] = 200 + (55 * a / 255); od[j2 + 1] = 40 + (215 * a / 255); od[j2 + 2] = 44 + (211 * a / 255); od[j2 + 3] = 254; }
+      }
+    });
+    var o = document.createElement("canvas"); o.width = W; o.height = H; o.getContext("2d").putImageData(out, 0, 0); ctx.drawImage(o, 0, 0);
+  }
+  function drawReserved(it, fresh) {
+    if (!fresh) { svg.width = 1; svg.height = 1; stEl.hidden = true; resB.hidden = true; }
+    clearInterval(resTimer);
+    if (!it.plots || !it.plots.length) return;
+    // keep the map live while it's open: re-check status.json every 2 minutes
+    resTimer = setInterval(function () { if (list[pos] === it && root.style.display !== "none") { delete cityAvail[it.city]; drawReserved(it, true); } else clearInterval(resTimer); }, 120000);
+    Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
+      var isBooked = v[0]; if (list[pos] !== it) return;
+      var hits = it.plots.filter(isBooked), n = hits.length;
+      paintBooked(it, v[1], hits);
+      stEl.hidden = false; resB.hidden = !n;
+      stEl.querySelector("span").textContent = n ? ("محجوز " + n + " من " + it.plots.length + " · متاح " + (it.plots.length - n)) : ("كل القطع متاحة (" + it.plots.length + ")");
+    }).catch(function () {});
+  }
+
   function show() {
     var it = list[pos];
     titleB.textContent = it.area; titleS.textContent = it.city + (list.length > 1 ? "  ·  " + (pos + 1) + " من " + list.length : "");
@@ -161,7 +282,8 @@
     loadEl.style.display = "block"; hintEl.style.opacity = 1;
     setTimeout(function () { hintEl.style.opacity = 0; }, 2500);
     // low-res thumb first so something shows instantly, then the sharp file
-    img.onload = null; img.src = it.thumb; img.style.width = it.w + "px"; img.style.height = it.h + "px";
+    img.onload = null; img.src = it.thumb; layer.style.width = it.w + "px"; layer.style.height = it.h + "px";
+    drawReserved(it);
     natW = it.w; natH = it.h;
     fit();
     var hi = new Image(), want = it.file;
