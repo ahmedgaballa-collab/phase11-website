@@ -207,8 +207,9 @@
     for (var i0 = 0; i0 < src.length; i0 += 4 * 7) { var R0 = src[i0], G0 = src[i0 + 1], B0 = src[i0 + 2];
       if (R0 > 190 && G0 > 140 && B0 < G0 - 40 && R0 - G0 < 90) { var hk = (R0 >> 3) + "," + (G0 >> 3) + "," + (B0 >> 3); hist[hk] = (hist[hk] || 0) + 1; if (hist[hk] > hb) { hb = hist[hk]; Y = [R0, G0, B0]; } } }
     function isY(j) { if (!Y) return false; var a = src[j] - Y[0], b = src[j + 1] - Y[1], c = src[j + 2] - Y[2]; return a * a + b * b + c * c < 2000; }
+    var hitSet = new Set(hits);
     hits.forEach(function (p) {
-      var cx = Math.round(p[2]), cy = Math.round(p[3]), rr = Math.round(r * 1.2), cands = [];
+      var cx = Math.round(p[2]), cy = Math.round(p[3]), rr = Math.round(Math.max(r * 1.2, 34)), cands = [];
       // seeds = plot-yellow pixels around the label, nearest first (the label text and the holes inside digits are skipped by retrying)
       for (var dy = -rr; dy <= rr; dy++) for (var dx = -rr; dx <= rr; dx++) {
         var x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= W || y >= H) continue;
@@ -216,11 +217,11 @@
       }
       cands.sort(function (u, v) { return u[0] - v[0]; });
       if (!cands.length) { ctx.fillStyle = "rgba(200,40,44,.85)"; ctx.beginPath(); ctx.arc(cx, cy, r * .9, 0, 7); ctx.fill(); return; }
-      var sr = Y[0], sg = Y[1], sb = Y[2], cap = Math.round(r * r * 80), px = [], x0 = cx - r * 6, x1 = cx + r * 6, y0 = cy - r * 6, y1 = cy + r * 6;
-      // only claim pixels closer to this plot's centre than to any other plot's (stops the colour leaking into neighbours)
-      var nb = it.plots.filter(function (o) { return o !== p && Math.abs(o[2] - cx) < r * 8 && Math.abs(o[3] - cy) < r * 8; });
+      var sr = Y[0], sg = Y[1], sb = Y[2], cap = Math.round(Math.max(r * r * 80, 40000)), B6 = Math.max(r * 6, 170), px = [], x0 = cx - B6, x1 = cx + B6, y0 = cy - B6, y1 = cy + B6;
+      // never claim pixels closer to an AVAILABLE plot's centre (stops red leaking onto open plots); booked neighbours may share
+      var nb = it.plots.filter(function (o) { return o !== p && !hitSet.has(o) && Math.abs(o[2] - cx) < B6 * 1.4 && Math.abs(o[3] - cy) < B6 * 1.4; });
       function mine(nx, ny) { var d0 = (nx - cx) * (nx - cx) + (ny - cy) * (ny - cy); for (var t = 0; t < nb.length; t++) { var ex = nx - nb[t][2], ey = ny - nb[t][3]; if (ex * ex + ey * ey < d0) return false; } return true; }
-      var big = r * r * 1.5, tries = 0;
+      var big = Math.max(r * r * 1.5, 600), tries = 0;
       for (var ci = 0; ci < cands.length && px.length < big && tries < 40; ci++) {
         var seed = cands[ci][1]; if (seen[seed] || !mine(seed % W, (seed / W) | 0)) continue; tries++;
         var st = [seed]; seen[seed] = 1;
@@ -230,20 +231,30 @@
             if (k === 0 && qx === 0 || k === 1 && qx === W - 1 || n < 0 || n >= W * H || seen[n]) return;
             var nx = n % W, ny = (n / W) | 0; if (nx < x0 || nx > x1 || ny < y0 || ny > y1 || !mine(nx, ny)) return;
             var j = n * 4, dr = src[j] - sr, dg = src[j + 1] - sg, db = src[j + 2] - sb;
-            if (dr * dr + dg * dg + db * db < 4500 || (src[j] > 175 && src[j + 1] > 120 && src[j + 2] < src[j + 1] - 35 && src[j] - src[j + 1] < 100)) { seen[n] = 1; st.push(n); }
+            if (dr * dr + dg * dg + db * db < 2500 || (src[j] > 175 && src[j + 1] > 120 && src[j + 2] < src[j + 1] - 35 && src[j] - src[j + 1] < 100)) { seen[n] = 1; st.push(n); }
           });
         }
       }
       if (px.length >= cap) { px.forEach(function (q) { seen[q] = 0; }); ctx.fillStyle = "rgba(200,40,44,.85)"; ctx.beginPath(); ctx.arc(cx, cy, r * .9, 0, 7); ctx.fill(); return; }
       // booked plot -> solid red, and the text inside it -> white so it stays readable
-      var bx0 = W, bx1 = 0, by0 = H, by1 = 0, mark = {};
-      px.forEach(function (q) { var j = q * 4, qx = q % W, qy = (q / W) | 0; od[j] = 200; od[j + 1] = 40; od[j + 2] = 44; od[j + 3] = 255; mark[q] = 1;
-        if (qx < bx0) bx0 = qx; if (qx > bx1) bx1 = qx; if (qy < by0) by0 = qy; if (qy > by1) by1 = qy; });
-      for (var yy = by0; yy <= by1; yy++) { var L = -1, Rr = -1; for (var xx = bx0; xx <= bx1; xx++) if (mark[yy * W + xx]) { if (L < 0) L = xx; Rr = xx; }
-        for (xx = L + 1; xx < Rr; xx++) { var q2 = yy * W + xx; if (mark[q2]) continue; var up = 0, dn = 0;
-          for (var k2 = yy - 1; k2 >= by0; k2--) if (mark[k2 * W + xx]) { up = 1; break; } for (k2 = yy + 1; k2 <= by1; k2++) if (mark[k2 * W + xx]) { dn = 1; break; }
-          if (up && dn) { var j2 = q2 * 4, lum = src[j2] * .3 + src[j2 + 1] * .59 + src[j2 + 2] * .11, a = Math.max(0, Math.min(255, (230 - lum) * 2.2));
-            od[j2] = 200 + (55 * a / 255); od[j2 + 1] = 40 + (215 * a / 255); od[j2 + 2] = 44 + (211 * a / 255); od[j2 + 3] = 255; } } }
+      px.forEach(function (q) { var j = q * 4; od[j] = 200; od[j + 1] = 40; od[j + 2] = 44; od[j + 3] = 255; });
+    });
+    // label text of every booked plot -> white: ink pixels (dark or red) in the label box that sit between red on both sides
+    function red(q) { return od[q * 4 + 3] === 255 && od[q * 4] === 200 && od[q * 4 + 1] === 40; }
+    hits.forEach(function (p) {
+      var cx = Math.round(p[2]), cy = Math.round(p[3]), bw = Math.round(Math.max(r * 1.2, 34) * 1.6), bh = Math.round(Math.max(r * 1.2, 34) * 1.3);
+      for (var yy = Math.max(0, cy - bh); yy <= Math.min(H - 1, cy + bh); yy++) for (var xx = Math.max(0, cx - bw); xx <= Math.min(W - 1, cx + bw); xx++) {
+        var q2 = yy * W + xx; if (red(q2)) continue;
+        var j2 = q2 * 4, sR = src[j2], sG = src[j2 + 1], sB = src[j2 + 2], lum = sR * .3 + sG * .59 + sB * .11;
+        if (!(lum < 150 || (sR > 140 && sG < 110 && sB < 110))) continue;
+        var l = 0, rt = 0, u = 0, d = 0, k;
+        for (k = 1; k < 30 && !l; k++) if (xx - k >= 0 && red(q2 - k)) l = 1;
+        for (k = 1; k < 30 && !rt; k++) if (xx + k < W && red(q2 + k)) rt = 1;
+        for (k = 1; k < 30 && !u; k++) if (yy - k >= 0 && red(q2 - k * W)) u = 1;
+        for (k = 1; k < 30 && !d; k++) if (yy + k < H && red(q2 + k * W)) d = 1;
+        if (l && rt && u && d) { var a = Math.max(0, Math.min(255, (230 - lum) * 2.2));
+          od[j2] = 200 + (55 * a / 255); od[j2 + 1] = 40 + (215 * a / 255); od[j2 + 2] = 44 + (211 * a / 255); od[j2 + 3] = 254; }
+      }
     });
     var o = document.createElement("canvas"); o.width = W; o.height = H; o.getContext("2d").putImageData(out, 0, 0); ctx.drawImage(o, 0, 0);
   }
