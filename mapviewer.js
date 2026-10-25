@@ -202,28 +202,37 @@
     var t = document.createElement("canvas"); t.width = W; t.height = H; var tc = t.getContext("2d"); tc.drawImage(im, 0, 0, W, H);
     var src = tc.getImageData(0, 0, W, H).data, out = ctx.createImageData(W, H), od = out.data, seen = new Uint8Array(W * H);
     var r = Math.max(8, it.r || 14);
+    // the offered-plot yellow of this map = most common yellowish colour (sampled)
+    var hist = {}, Y = null, hb = 0;
+    for (var i0 = 0; i0 < src.length; i0 += 4 * 7) { var R0 = src[i0], G0 = src[i0 + 1], B0 = src[i0 + 2];
+      if (R0 > 190 && G0 > 140 && B0 < G0 - 40 && R0 - G0 < 90) { var hk = (R0 >> 3) + "," + (G0 >> 3) + "," + (B0 >> 3); hist[hk] = (hist[hk] || 0) + 1; if (hist[hk] > hb) { hb = hist[hk]; Y = [R0, G0, B0]; } } }
+    function isY(j) { if (!Y) return false; var a = src[j] - Y[0], b = src[j + 1] - Y[1], c = src[j + 2] - Y[2]; return a * a + b * b + c * c < 2000; }
     hits.forEach(function (p) {
-      var cx = Math.round(p[2]), cy = Math.round(p[3]), seed = -1, best = 1e9;
-      // seed = nearest yellow (offered-plot colour) pixel around the centre (skips the text)
-      for (var dy = -Math.round(r * .6); dy <= r * .6; dy++) for (var dx = -Math.round(r * .6); dx <= r * .6; dx++) {
-        var x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= W || y >= H) continue; var i = (y * W + x) * 4;
-        var R = src[i], G = src[i + 1], B = src[i + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B);
-        if (R > 190 && G > 140 && B < G - 40 && R - G < 90) { var d = dx * dx + dy * dy; if (d < best) { best = d; seed = y * W + x; } }
+      var cx = Math.round(p[2]), cy = Math.round(p[3]), rr = Math.round(r * 1.2), cands = [];
+      // seeds = plot-yellow pixels around the label, nearest first (the label text and the holes inside digits are skipped by retrying)
+      for (var dy = -rr; dy <= rr; dy++) for (var dx = -rr; dx <= rr; dx++) {
+        var x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= W || y >= H) continue;
+        if (isY((y * W + x) * 4)) cands.push([dx * dx + dy * dy, y * W + x]);
       }
-      if (seed < 0) { ctx.fillStyle = "rgba(214,48,49,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, 7); ctx.fill(); return; }
-      var s4 = seed * 4, sr = src[s4], sg = src[s4 + 1], sb = src[s4 + 2], cap = Math.round(r * r * 30), st = [seed], px = [], x0 = cx - r * 4, x1 = cx + r * 4, y0 = cy - r * 4, y1 = cy + r * 4;
+      cands.sort(function (u, v) { return u[0] - v[0]; });
+      if (!cands.length) { ctx.fillStyle = "rgba(214,48,49,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, 7); ctx.fill(); return; }
+      var sr = Y[0], sg = Y[1], sb = Y[2], cap = Math.round(r * r * 30), px = [], x0 = cx - r * 4, x1 = cx + r * 4, y0 = cy - r * 4, y1 = cy + r * 4;
       // only claim pixels closer to this plot's centre than to any other plot's (stops the colour leaking into neighbours)
       var nb = it.plots.filter(function (o) { return o !== p && Math.abs(o[2] - cx) < r * 4 && Math.abs(o[3] - cy) < r * 4; });
       function mine(nx, ny) { var d0 = (nx - cx) * (nx - cx) + (ny - cy) * (ny - cy); for (var t = 0; t < nb.length; t++) { var ex = nx - nb[t][2], ey = ny - nb[t][3]; if (ex * ex + ey * ey < d0) return false; } return true; }
-      seen[seed] = 1;
-      while (st.length && px.length < cap) {
-        var q = st.pop(); px.push(q); var qx = q % W, qy = (q / W) | 0;
-        [q - 1, q + 1, q - W, q + W].forEach(function (n, k) {
-          if (k === 0 && qx === 0 || k === 1 && qx === W - 1 || n < 0 || n >= W * H || seen[n]) return;
-          var nx = n % W, ny = (n / W) | 0; if (nx < x0 || nx > x1 || ny < y0 || ny > y1 || !mine(nx, ny)) return;
-          var j = n * 4, dr = src[j] - sr, dg = src[j + 1] - sg, db = src[j + 2] - sb;
-          if (dr * dr + dg * dg + db * db < 4500) { seen[n] = 1; st.push(n); }
-        });
+      var big = r * r * 1.5, tries = 0;
+      for (var ci = 0; ci < cands.length && px.length < big && tries < 40; ci++) {
+        var seed = cands[ci][1]; if (seen[seed] || !mine(seed % W, (seed / W) | 0)) continue; tries++;
+        var st = [seed]; seen[seed] = 1;
+        while (st.length && px.length < cap) {
+          var q = st.pop(); px.push(q); var qx = q % W, qy = (q / W) | 0;
+          [q - 1, q + 1, q - W, q + W].forEach(function (n, k) {
+            if (k === 0 && qx === 0 || k === 1 && qx === W - 1 || n < 0 || n >= W * H || seen[n]) return;
+            var nx = n % W, ny = (n / W) | 0; if (nx < x0 || nx > x1 || ny < y0 || ny > y1 || !mine(nx, ny)) return;
+            var j = n * 4, dr = src[j] - sr, dg = src[j + 1] - sg, db = src[j + 2] - sb;
+            if (dr * dr + dg * dg + db * db < 4500) { seen[n] = 1; st.push(n); }
+          });
+        }
       }
       if (px.length >= cap) { px.forEach(function (q) { seen[q] = 0; }); ctx.fillStyle = "rgba(214,48,49,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, 7); ctx.fill(); return; }
       // booked plot -> solid red, and the text inside it -> white so it stays readable
