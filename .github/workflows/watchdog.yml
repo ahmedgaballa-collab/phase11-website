@@ -1,0 +1,40 @@
+name: Sync watchdog
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"        # every 10 minutes (GitHub may run it a few minutes late)
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "Send me a test message"
+        type: boolean
+        default: true
+
+concurrency:
+  group: watchdog
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+      - uses: actions/cache/restore@v4
+        with:
+          path: watchdog_state.json
+          key: watchdog-${{ github.run_id }}
+          restore-keys: watchdog-
+      - name: Check last sync
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_OWNER_CHAT_ID: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          WATCHDOG_STATE: watchdog_state.json
+        run: python3 .github/watchdog.py ${{ inputs.test && '--test' || '' }}
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: watchdog_state.json
+          key: watchdog-${{ github.run_id }}
