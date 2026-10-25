@@ -159,27 +159,35 @@
   }
 
     /* booked plots come live from Supabase (same source as /search and /dashboard, synced every 5 min); status.json is only a fallback */
-  var STATUS = "status.json", resSet = null, resAt = 0, resLoading = null;
+  var STATUS = "status.json";
   var SB_URL = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
   var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
-  function sbKeys() {
+  // A plot is "available" only if the live DB lists it as available & active for its city.
+  // Anything else is booked — this also covers plots/zones NUCA already removed from the site
+  // (fully booked) that the DB never saw or marked inactive.
+  var cityAvail = {};
+  function sbAvail(city) {
     var keys = [];
     function page(from) {
-      return fetch(SB_URL + "plots?select=city,block,plot_number&status=eq.unavailable&is_active=eq.true&order=id", {
+      return fetch(SB_URL + "plots?select=block,plot_number&status=eq.available&is_active=eq.true&city=eq." + encodeURIComponent(city), {
         cache: "no-store", headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Range-Unit": "items", Range: from + "-" + (from + 999) } })
         .then(function (r) { if (!r.ok) throw new Error("sb " + r.status); return r.json(); })
-        .then(function (rows) { rows.forEach(function (r) { keys.push(r.city + "|" + r.block + "|" + r.plot_number); }); return rows.length < 1000 || from > 50000 ? keys : page(from + 1000); });
+        .then(function (rows) { rows.forEach(function (r) { keys.push(norm(r.block) + "|" + norm(r.plot_number)); }); return rows.length < 1000 || from > 50000 ? keys : page(from + 1000); });
     }
     return page(0);
   }
   function fileKeys() { return fetch(STATUS + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) { return d.reserved || []; }); }
-  function loadStatus() {
-    if (resSet && Date.now() - resAt < 60000) return Promise.resolve(resSet);
-    if (!resLoading) resLoading = sbKeys().catch(fileKeys)
-      .then(function (list) { var s = new Set(); list.forEach(function (k) { var p = String(k).split("|"); if (p.length >= 3) s.add(norm(p[0]) + "|" + norm(p[p.length - 2]) + "|" + norm(p[p.length - 1])); });
-        resSet = s; resAt = Date.now(); resLoading = null; return s; })
-      .catch(function () { resLoading = null; return resSet || new Set(); });
-    return resLoading;
+  // resolves to fn(plot) -> true if booked
+  function loadStatus(it) {
+    var c = it.city, hit = cityAvail[c];
+    if (!hit || Date.now() - hit.at > 60000) {
+      hit = cityAvail[c] = { at: Date.now(), p: sbAvail(c).then(function (list) { return { avail: new Set(list) }; })
+        .catch(function () { return fileKeys().then(function (list) { var s = new Set(); list.forEach(function (k) { var q = String(k).split("|"); if (q.length >= 3) s.add(norm(q[0]) + "|" + norm(q[q.length - 2]) + "|" + norm(q[q.length - 1])); }); return { res: s }; })
+          .catch(function () { return { res: new Set() }; }); }) };
+    }
+    return hit.p.then(function (d) {
+      return function (pl) { var k = norm(it.blocks[pl[1]]) + "|" + norm(pl[0]); return d.avail ? !d.avail.has(k) : d.res.has(norm(it.city) + "|" + k); };
+    });
   }
   var resTimer = null, imgCache = {};
   function fullImg(src) {
@@ -235,10 +243,10 @@
     clearInterval(resTimer);
     if (!it.plots || !it.plots.length) return;
     // keep the map live while it's open: re-check status.json every 2 minutes
-    resTimer = setInterval(function () { if (list[pos] === it && root.style.display !== "none") { resAt = 0; drawReserved(it, true); } else clearInterval(resTimer); }, 120000);
-    Promise.all([loadStatus(), fullImg(it.file)]).then(function (v) {
-      var set = v[0]; if (list[pos] !== it) return;
-      var c = norm(it.city), hits = it.plots.filter(function (p) { return set.has(c + "|" + norm(it.blocks[p[1]]) + "|" + norm(p[0])); }), n = hits.length;
+    resTimer = setInterval(function () { if (list[pos] === it && root.style.display !== "none") { delete cityAvail[it.city]; drawReserved(it, true); } else clearInterval(resTimer); }, 120000);
+    Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
+      var isBooked = v[0]; if (list[pos] !== it) return;
+      var hits = it.plots.filter(isBooked), n = hits.length;
       paintBooked(it, v[1], hits);
       stEl.hidden = false; resB.hidden = !n;
       stEl.querySelector("span").textContent = n ? ("محجوز " + n + " من " + it.plots.length + " · متاح " + (it.plots.length - n)) : ("كل القطع متاحة (" + it.plots.length + ")");
