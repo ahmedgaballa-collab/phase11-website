@@ -169,7 +169,7 @@
   function sbAvail(city) {
     var keys = [];
     function page(from) {
-      return fetch(SB_URL + "plots?select=block,plot_number&status=eq.available&is_active=eq.true&city=eq." + encodeURIComponent(city), {
+      return fetch(SB_URL + "plots?select=block,plot_number&status=eq.available&is_active=eq.true&order=id&city=eq." + encodeURIComponent(city), {
         cache: "no-store", headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Range-Unit": "items", Range: from + "-" + (from + 999) } })
         .then(function (r) { if (!r.ok) throw new Error("sb " + r.status); return r.json(); })
         .then(function (rows) { rows.forEach(function (r) { keys.push(norm(r.block) + "|" + norm(r.plot_number)); }); return rows.length < 1000 || from > 50000 ? keys : page(from + 1000); });
