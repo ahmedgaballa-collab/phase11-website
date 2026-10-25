@@ -41,10 +41,10 @@
     ".agmv-stage{position:relative;flex:1;overflow:hidden;cursor:grab}.agmv-stage.drag{cursor:grabbing}" +
     ".agmv-layer{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;box-shadow:0 10px 40px rgba(0,0,0,.5);background:#fff}" +
     ".agmv-layer img{position:absolute;left:0;top:0;width:100%;height:100%;max-width:none}" +
-    ".agmv-layer svg{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
+    ".agmv-layer canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
     ".agmv-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#F5F1E7;background:rgba(255,255,255,.08);border-radius:999px;padding:4px 10px}" +
-    ".agmv-st i{width:12px;height:12px;border-radius:50%;background:#B3121F;display:inline-block;border:2px solid #fff}" +
-    ".agmv.hide-res .agmv-layer svg{display:none}" +
+    ".agmv-st i{width:13px;height:13px;border-radius:3px;background:#C8282C;display:inline-block;border:1px solid #fff}" +
+    ".agmv.hide-res .agmv-layer canvas{display:none}" +
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
@@ -65,13 +65,13 @@
       '<div class="agmv-top"><button type="button" data-a="close" aria-label="إغلاق">✕</button>' +
       '<div class="agmv-t"><b></b><small></small></div>' +
       '<button type="button" data-a="prev" aria-label="الخريطة اللي قبلها">›</button><button type="button" data-a="next" aria-label="الخريطة اللي بعدها">‹</button></div>' +
-      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><svg xmlns="http://www.w3.org/2000/svg"></svg></div><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
+      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
       '<div class="agmv-bot"><button type="button" data-a="in" aria-label="تكبير">＋</button><button type="button" data-a="out" aria-label="تصغير">－</button>' +
       '<span class="agmv-st" hidden><i></i><span></span></span><button type="button" data-a="res" hidden>إخفاء المحجوز</button><button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
       '<a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
       '<a class="agmv-b agmv-wa" target="_blank" rel="noopener"><span>واتساب</span><span class="agmv-txt">— اسأل عن المنطقة دي</span></a></div>';
     document.body.appendChild(root);
-    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("svg"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
+    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
     titleB = root.querySelector(".agmv-t b"); titleS = root.querySelector(".agmv-t small");
     loadEl = root.querySelector(".agmv-load"); hintEl = root.querySelector(".agmv-hint");
     dlA = root.querySelector('[data-a="dl"]'); waA = root.querySelector(".agmv-wa");
@@ -168,23 +168,65 @@
       .catch(function () { resLoading = null; return resSet || new Set(); });
     return resLoading;
   }
-  function drawReserved(it) {
-    svg.innerHTML = ""; stEl.hidden = true; resB.hidden = true;
+  var resTimer = null, imgCache = {};
+  function fullImg(src) {
+    if (!imgCache[src]) imgCache[src] = new Promise(function (ok, no) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = no; im.src = src; });
+    return imgCache[src];
+  }
+  // colour the booked plots themselves: flood-fill each plot's yellow area from its centre
+  function paintBooked(it, im, hits) {
+    var W = it.w, H = it.h; svg.width = W; svg.height = H;
+    var ctx = svg.getContext("2d"); ctx.clearRect(0, 0, W, H);
+    if (!hits.length) return;
+    var t = document.createElement("canvas"); t.width = W; t.height = H; var tc = t.getContext("2d"); tc.drawImage(im, 0, 0, W, H);
+    var src = tc.getImageData(0, 0, W, H).data, out = ctx.createImageData(W, H), od = out.data, seen = new Uint8Array(W * H);
+    var r = Math.max(8, it.r || 14);
+    hits.forEach(function (p) {
+      var cx = Math.round(p[2]), cy = Math.round(p[3]), seed = -1, best = 1e9;
+      // seed = nearest yellow (offered-plot colour) pixel around the centre (skips the text)
+      for (var dy = -Math.round(r * .6); dy <= r * .6; dy++) for (var dx = -Math.round(r * .6); dx <= r * .6; dx++) {
+        var x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= W || y >= H) continue; var i = (y * W + x) * 4;
+        var R = src[i], G = src[i + 1], B = src[i + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B);
+        if (R > 190 && G > 140 && B < G - 40 && R - G < 90) { var d = dx * dx + dy * dy; if (d < best) { best = d; seed = y * W + x; } }
+      }
+      if (seed < 0) { ctx.fillStyle = "rgba(214,48,49,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, 7); ctx.fill(); return; }
+      var s4 = seed * 4, sr = src[s4], sg = src[s4 + 1], sb = src[s4 + 2], cap = Math.round(r * r * 30), st = [seed], px = [], x0 = cx - r * 4, x1 = cx + r * 4, y0 = cy - r * 4, y1 = cy + r * 4;
+      seen[seed] = 1;
+      while (st.length && px.length < cap) {
+        var q = st.pop(); px.push(q); var qx = q % W, qy = (q / W) | 0;
+        [q - 1, q + 1, q - W, q + W].forEach(function (n, k) {
+          if (k === 0 && qx === 0 || k === 1 && qx === W - 1 || n < 0 || n >= W * H || seen[n]) return;
+          var nx = n % W, ny = (n / W) | 0; if (nx < x0 || nx > x1 || ny < y0 || ny > y1) return;
+          var j = n * 4, dr = src[j] - sr, dg = src[j + 1] - sg, db = src[j + 2] - sb;
+          if (dr * dr + dg * dg + db * db < 3200) { seen[n] = 1; st.push(n); }
+        });
+      }
+      if (px.length >= cap) { px.forEach(function (q) { seen[q] = 0; }); ctx.fillStyle = "rgba(214,48,49,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, 7); ctx.fill(); return; }
+      // booked plot -> solid red, and the text inside it -> white so it stays readable
+      var bx0 = W, bx1 = 0, by0 = H, by1 = 0, mark = {};
+      px.forEach(function (q) { var j = q * 4, qx = q % W, qy = (q / W) | 0; od[j] = 200; od[j + 1] = 40; od[j + 2] = 44; od[j + 3] = 255; mark[q] = 1;
+        if (qx < bx0) bx0 = qx; if (qx > bx1) bx1 = qx; if (qy < by0) by0 = qy; if (qy > by1) by1 = qy; });
+      for (var yy = by0; yy <= by1; yy++) { var L = -1, Rr = -1; for (var xx = bx0; xx <= bx1; xx++) if (mark[yy * W + xx]) { if (L < 0) L = xx; Rr = xx; }
+        for (xx = L + 1; xx < Rr; xx++) { var q2 = yy * W + xx; if (mark[q2]) continue; var up = 0, dn = 0;
+          for (var k2 = yy - 1; k2 >= by0; k2--) if (mark[k2 * W + xx]) { up = 1; break; } for (k2 = yy + 1; k2 <= by1; k2++) if (mark[k2 * W + xx]) { dn = 1; break; }
+          if (up && dn) { var j2 = q2 * 4, lum = src[j2] * .3 + src[j2 + 1] * .59 + src[j2 + 2] * .11, a = Math.max(0, Math.min(255, (230 - lum) * 2.2));
+            od[j2] = 200 + (55 * a / 255); od[j2 + 1] = 40 + (215 * a / 255); od[j2 + 2] = 44 + (211 * a / 255); od[j2 + 3] = 255; } } }
+    });
+    var o = document.createElement("canvas"); o.width = W; o.height = H; o.getContext("2d").putImageData(out, 0, 0); ctx.drawImage(o, 0, 0);
+  }
+  function drawReserved(it, fresh) {
+    if (!fresh) { svg.width = 1; svg.height = 1; stEl.hidden = true; resB.hidden = true; }
+    clearInterval(resTimer);
     if (!it.plots || !it.plots.length) return;
-    svg.setAttribute("viewBox", "0 0 " + it.w + " " + it.h);
-    loadStatus().then(function (set) {
-      if (list[pos] !== it) return;
-      var c = norm(it.city), r = Math.max(10, it.r || 14), out = [], n = 0;
-      it.plots.forEach(function (p) {
-        if (!set.has(c + "|" + norm(it.blocks[p[1]]) + "|" + norm(p[0]))) return; n++;
-        var x = p[2], y = p[3], d = r * 0.62;
-        out.push('<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="rgba(179,18,31,.62)" stroke="#fff" stroke-width="' + (r / 6) + '"/>' +
-          '<path d="M' + (x - d) + ' ' + (y - d) + 'L' + (x + d) + ' ' + (y + d) + 'M' + (x + d) + ' ' + (y - d) + 'L' + (x - d) + ' ' + (y + d) + '" stroke="#fff" stroke-width="' + (r / 4) + '" stroke-linecap="round"/>');
-      });
-      svg.innerHTML = out.join("");
+    // keep the map live while it's open: re-check status.json every 2 minutes
+    resTimer = setInterval(function () { if (list[pos] === it && root.style.display !== "none") { resAt = 0; drawReserved(it, true); } else clearInterval(resTimer); }, 120000);
+    Promise.all([loadStatus(), fullImg(it.file)]).then(function (v) {
+      var set = v[0]; if (list[pos] !== it) return;
+      var c = norm(it.city), hits = it.plots.filter(function (p) { return set.has(c + "|" + norm(it.blocks[p[1]]) + "|" + norm(p[0])); }), n = hits.length;
+      paintBooked(it, v[1], hits);
       stEl.hidden = false; resB.hidden = !n;
       stEl.querySelector("span").textContent = n ? ("محجوز " + n + " من " + it.plots.length + " · متاح " + (it.plots.length - n)) : ("كل القطع متاحة (" + it.plots.length + ")");
-    });
+    }).catch(function () {});
   }
 
   function show() {
