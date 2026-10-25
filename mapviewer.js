@@ -204,14 +204,17 @@
       }
       if (seed < 0) { ctx.fillStyle = "rgba(214,48,49,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, 7); ctx.fill(); return; }
       var s4 = seed * 4, sr = src[s4], sg = src[s4 + 1], sb = src[s4 + 2], cap = Math.round(r * r * 30), st = [seed], px = [], x0 = cx - r * 4, x1 = cx + r * 4, y0 = cy - r * 4, y1 = cy + r * 4;
+      // only claim pixels closer to this plot's centre than to any other plot's (stops the colour leaking into neighbours)
+      var nb = it.plots.filter(function (o) { return o !== p && Math.abs(o[2] - cx) < r * 4 && Math.abs(o[3] - cy) < r * 4; });
+      function mine(nx, ny) { var d0 = (nx - cx) * (nx - cx) + (ny - cy) * (ny - cy); for (var t = 0; t < nb.length; t++) { var ex = nx - nb[t][2], ey = ny - nb[t][3]; if (ex * ex + ey * ey < d0) return false; } return true; }
       seen[seed] = 1;
       while (st.length && px.length < cap) {
         var q = st.pop(); px.push(q); var qx = q % W, qy = (q / W) | 0;
         [q - 1, q + 1, q - W, q + W].forEach(function (n, k) {
           if (k === 0 && qx === 0 || k === 1 && qx === W - 1 || n < 0 || n >= W * H || seen[n]) return;
-          var nx = n % W, ny = (n / W) | 0; if (nx < x0 || nx > x1 || ny < y0 || ny > y1) return;
+          var nx = n % W, ny = (n / W) | 0; if (nx < x0 || nx > x1 || ny < y0 || ny > y1 || !mine(nx, ny)) return;
           var j = n * 4, dr = src[j] - sr, dg = src[j + 1] - sg, db = src[j + 2] - sb;
-          if (dr * dr + dg * dg + db * db < 3200) { seen[n] = 1; st.push(n); }
+          if (dr * dr + dg * dg + db * db < 4500) { seen[n] = 1; st.push(n); }
         });
       }
       if (px.length >= cap) { px.forEach(function (q) { seen[q] = 0; }); ctx.fillStyle = "rgba(214,48,49,.55)"; ctx.beginPath(); ctx.arc(cx, cy, r * .7, 0, 7); ctx.fill(); return; }
