@@ -158,12 +158,25 @@
     if (!Object.keys(pointers).length) { drag = null; stage.classList.remove("drag"); }
   }
 
-  /* ---------- live booked overlay (status.json, refreshed every 5 min by the sync job) ---------- */
+    /* booked plots come live from Supabase (same source as /search and /dashboard, synced every 5 min); status.json is only a fallback */
   var STATUS = "status.json", resSet = null, resAt = 0, resLoading = null;
+  var SB_URL = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
+  var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
+  function sbKeys() {
+    var keys = [];
+    function page(from) {
+      return fetch(SB_URL + "plots?select=city,block,plot_number&status=eq.unavailable&is_active=eq.true&order=id", {
+        cache: "no-store", headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Range-Unit": "items", Range: from + "-" + (from + 999) } })
+        .then(function (r) { if (!r.ok) throw new Error("sb " + r.status); return r.json(); })
+        .then(function (rows) { rows.forEach(function (r) { keys.push(r.city + "|" + r.block + "|" + r.plot_number); }); return rows.length < 1000 || from > 50000 ? keys : page(from + 1000); });
+    }
+    return page(0);
+  }
+  function fileKeys() { return fetch(STATUS + "?t=" + Date.now(), { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (d) { return d.reserved || []; }); }
   function loadStatus() {
-    if (resSet && Date.now() - resAt < 120000) return Promise.resolve(resSet);
-    if (!resLoading) resLoading = fetch(STATUS + "?t=" + Math.floor(Date.now() / 60000), { cache: "no-store" }).then(function (r) { return r.json(); })
-      .then(function (d) { var s = new Set(); (d.reserved || []).forEach(function (k) { var p = String(k).split("|"); if (p.length >= 3) s.add(norm(p[0]) + "|" + norm(p[p.length - 2]) + "|" + norm(p[p.length - 1])); });
+    if (resSet && Date.now() - resAt < 60000) return Promise.resolve(resSet);
+    if (!resLoading) resLoading = sbKeys().catch(fileKeys)
+      .then(function (list) { var s = new Set(); list.forEach(function (k) { var p = String(k).split("|"); if (p.length >= 3) s.add(norm(p[0]) + "|" + norm(p[p.length - 2]) + "|" + norm(p[p.length - 1])); });
         resSet = s; resAt = Date.now(); resLoading = null; return s; })
       .catch(function () { resLoading = null; return resSet || new Set(); });
     return resLoading;
