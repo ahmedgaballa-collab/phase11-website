@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>خرائط المرحلة 11 | أحمد جاب الله</title>
-<meta name="description" content="خرائط كل مناطق أراضي المرحلة 11 — بيت الوطن، لكل مدينة، مع إمكانية التكبير والتحميل">
+<meta name="description" content="اكتب المقدم اللي معاك وشوف فين تلحق قطعة في أراضي المرحلة 11 — بيت الوطن، على الخريطة ولحظة بلحظة">
 <link rel="icon" href="logo.png">
 <script>
 (function(){var t="light";try{t=localStorage.getItem("ag-theme")==="dark"?"dark":"light";}catch(e){}
@@ -32,8 +32,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:'Tajawal',system
   -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
 a{color:inherit}
 .wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+[hidden]{display:none !important}
 
-/* header */
+/* header (same as the other pages) */
 .topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 88%,transparent);
   backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
 .topbar .wrap{display:flex;align-items:center;gap:16px;height:68px}
@@ -41,48 +42,98 @@ a{color:inherit}
 .brand img{height:42px;width:42px;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:3px}
 .brand b{display:block;font-size:16px;font-weight:800;line-height:1.2;white-space:nowrap}
 .brand small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap}
-.nav{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-inline-start:12px}
+.nav{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-inline-start:12px;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
 .nav a{font-size:13.5px;text-decoration:none;color:var(--ink-2);padding:6px 14px;border-radius:999px;white-space:nowrap;font-weight:500}
 .nav a.on{background:var(--ink);color:var(--surface);font-weight:700}
 .top-actions{margin-inline-start:auto;display:flex;align-items:center;gap:8px}
-.live{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);white-space:nowrap}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:none}
-.dot.on{background:#22A45D;animation:pulse 2s infinite}
-@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,164,93,.45)}70%{box-shadow:0 0 0 7px rgba(34,164,93,0)}100%{box-shadow:0 0 0 0 rgba(34,164,93,0)}}
-.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);
-  cursor:pointer;display:grid;place-items:center;font-size:16px;flex:none}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;display:grid;place-items:center;font-size:16px;flex:none}
 .icon-btn:hover{border-color:var(--gold)}
-.tg-btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:999px;background:#229ED9;color:#fff;
-  text-decoration:none;font-weight:700;font-size:13.5px;white-space:nowrap}
+.tg-btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:999px;background:#229ED9;color:#fff;text-decoration:none;font-weight:700;font-size:13.5px;white-space:nowrap}
 .tg-btn svg{width:17px;height:17px}
-.tg-btn:hover{filter:brightness(1.08)}
 
-.hero{padding:26px 0 8px}
-.hero h1{margin:0 0 6px;font-size:26px;font-weight:900;letter-spacing:-.2px}
+/* page */
+main{padding-bottom:30px}
+.hero{padding:22px 0 6px}
+.hero h1{margin:0 0 4px;font-size:26px;font-weight:900;letter-spacing:-.2px}
 .hero p{margin:0;color:var(--ink-2)}
-.tools{position:sticky;top:68px;z-index:10;background:var(--bg);padding:12px 0 10px;display:flex;flex-direction:column;gap:10px}
-.search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 12px;height:44px;box-shadow:var(--shadow)}
+.budget{background:var(--ink);color:var(--surface);border-radius:20px;padding:18px 18px 14px;margin:14px 0 16px;box-shadow:var(--shadow)}
+:root[data-theme="dark"] .budget{background:#16233D;color:#F5F1E7}
+.budget label{display:block;font-size:17px;font-weight:800;margin-bottom:10px}
+.b-in{display:flex;align-items:center;background:#fff;border-radius:14px;padding:2px 14px;max-width:520px}
+.b-in span{color:#B8912F;font-size:22px;font-weight:900}
+.b-in input{flex:1;min-width:0;border:0;outline:0;font:inherit;font-size:24px;font-weight:800;padding:10px;color:#0B1F3F;background:none;direction:ltr;text-align:right}
+.b-in button{border:0;background:none;color:#7D889C;font-size:20px;cursor:pointer;padding:0 4px}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.presets button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);color:inherit;border-radius:999px;padding:5px 13px;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.presets button.on{background:#E2C27A;color:#0B1F3F;border-color:#E2C27A}
+.budget small{display:block;opacity:.75;margin-top:10px;font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 12px;height:44px}
 .search input{flex:1;border:0;outline:0;background:transparent;color:var(--ink);font:inherit;font-size:15px;min-width:0}
 .search svg{width:18px;height:18px;color:var(--ink-3);flex:none}
-.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}
-.chip{flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:999px;padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;white-space:nowrap}
-.chip b{color:var(--ink-3);font-weight:700;margin-inline-start:4px;font-size:12px}
-.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
-.chip.on b{color:inherit;opacity:.75}
-.city-sec{margin-top:18px}
-.city-h{display:flex;align-items:baseline;gap:10px;margin:0 0 10px}
-.city-h h2{margin:0;font-size:18px;font-weight:800}
-.city-h small{color:var(--ink-3)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-.map-card{display:block;text-align:start;padding:0;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);overflow:hidden;cursor:pointer;
-  box-shadow:var(--shadow);font:inherit;color:inherit;transition:transform .15s,border-color .15s}
-.map-card:hover{transform:translateY(-2px);border-color:var(--gold)}
-.map-card .th{aspect-ratio:4/3;background:#fff center/cover no-repeat;border-bottom:1px solid var(--line)}
-.map-card .tx{padding:10px 12px 12px}
-.map-card b{display:block;font-size:14.5px;font-weight:700;line-height:1.35}
-.map-card small{display:block;color:var(--ink-3);font-size:12.5px;margin-top:2px}
+select{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;height:44px;padding:0 10px;font:inherit;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;text-align:start;font:inherit;color:inherit;transition:transform .15s,border-color .15s,opacity .2s;padding:0;overflow:hidden;display:block;width:100%}
+.card:hover{transform:translateY(-2px);border-color:var(--gold)}
+.card.dim{opacity:.45}
+.c-body{padding:14px 16px 14px;position:relative}
+.c-body h3{margin:0;font-size:19px;font-weight:800;line-height:1.3}
+.c-sub{color:var(--ink-3);font-size:13px}
+.badge{position:absolute;top:14px;inset-inline-end:14px;font-size:12px;font-weight:800;border-radius:999px;padding:3px 10px}
+.badge.hot{background:#FCEFD9;color:#A9651A}
+.badge.done{background:var(--ink);color:var(--surface)}
+.kv{display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;font-size:14px;color:var(--ink-2)}
+.kv b{font-size:18px;color:var(--ink)}
+.kv b.g{color:var(--good)}
+.pb{height:7px;background:var(--track);border-radius:4px;overflow:hidden;margin-top:8px}
+.pb i{display:block;height:100%;background:linear-gradient(270deg,#E2C27A,var(--gold))}
+.pct{font-size:12px;color:var(--ink-3);margin-top:4px}
+.fit{margin-top:10px;background:var(--good-soft);color:var(--good);border-radius:10px;padding:7px 10px;font-weight:800;font-size:14.5px}
+.fit.none{background:var(--surface-2);color:var(--ink-3);font-weight:700}
+.thumb{aspect-ratio:16/9;background:#fff center/cover no-repeat;border-bottom:1px solid var(--line)}
 .empty{padding:40px 10px;text-align:center;color:var(--ink-3)}
-main{padding-bottom:20px}
+.back{background:none;border:0;color:var(--gold-ink);font:inherit;font-weight:800;font-size:15px;cursor:pointer;padding:0;margin:16px 0 4px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 16px}
+.stats div{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.stats span{display:block;font-size:12px;color:var(--ink-3)}
+.stats b{font-size:20px}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);gap:18px;align-items:start}
+.filters{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;position:sticky;top:84px;box-shadow:var(--shadow)}
+.filters h4{margin:0 0 8px;font-size:14px;color:var(--ink-2)}
+.fg{margin-bottom:16px}
+.f-in{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:0 10px}
+.f-in input{flex:1;min-width:0;border:0;outline:0;background:none;color:var(--ink);font:inherit;font-size:15px;padding:9px 0;direction:ltr;text-align:right}
+.range{display:flex;gap:6px}
+.range input{width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;padding:9px;font:inherit;font-size:14px;background:var(--surface-2);color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip b{opacity:.65;font-size:11.5px;margin-inline-start:3px}
+details.more summary{cursor:pointer;color:var(--gold-ink);font-weight:800;font-size:14px;margin-bottom:10px}
+.f-foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.clear{background:none;border:0;color:var(--gold-ink);font:inherit;font-weight:700;cursor:pointer;padding:0}
+.apply{display:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);margin:0 0 12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-inline-end:4px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:22px 0 10px}
+.sec-h h2{margin:0;font-size:18px;font-weight:800}
+.sec-h small{color:var(--ink-3)}
+.plots{display:flex;flex-direction:column;gap:8px}
+.plot{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.plot .pn{min-width:0;flex:1}
+.plot .pn b{display:block;font-size:15px}
+.plot .pn small{display:block;color:var(--ink-3);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plot .pv{text-align:left;white-space:nowrap}
+.plot .pv b{display:block;font-size:16px;color:var(--good)}
+.plot .pv small{color:var(--ink-3);font-size:12.5px}
+.tag{display:inline-block;font-size:11.5px;background:var(--gold-soft);color:var(--gold-ink);border-radius:6px;padding:0 6px;margin-inline-start:4px}
+.pa{display:flex;gap:6px}
+.pa a,.pa button{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface-2);cursor:pointer;text-decoration:none;font-size:16px;color:var(--ink)}
+.pa a.wa{background:#25A05B;border-color:#25A05B;color:#fff}
+.more-btn{margin:12px auto 0;display:block;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:9px 20px;font:inherit;font-weight:700;cursor:pointer}
+.fab{display:none}
+.note{font-size:12.5px;color:var(--ink-3);margin-top:8px}
 footer{border-top:1px solid var(--line);background:var(--surface);margin-top:28px}
 footer .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 16px;color:var(--ink-2);font-size:13.5px}
 footer img{height:34px}
@@ -90,21 +141,28 @@ footer .cta{margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap}
 footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13.5px}
 .btn-wa{background:#25A05B;color:#fff}
 .btn-call{border:1px solid var(--line);color:var(--ink)}
+/* map viewer: "fits you" legend chip */
+.agfit-chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#F5F1E7;background:rgba(255,255,255,.08);border-radius:999px;padding:4px 10px}
+.agfit-chip i{width:13px;height:13px;border-radius:50%;background:#1FB25A;display:inline-block;border:2px solid #fff}
 
 @media (max-width:900px){
   .topbar .wrap{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px;row-gap:10px}
-  .nav{order:3;width:100%;margin:0;display:flex}
-  .nav a{flex:1;text-align:center;padding:8px 6px}
+  .nav{order:3;width:100%;margin:0}
+  .nav a{flex:1 0 auto;text-align:center;padding:8px 12px}
   .tg-btn span{display:none} .tg-btn{padding:0 11px}
-  .tools{top:0;position:relative}
+  .layout{grid-template-columns:1fr}
+  .filters{display:none;position:fixed;left:0;right:0;bottom:0;top:auto;z-index:30;border-radius:20px 20px 0 0;max-height:82vh;overflow:auto;box-shadow:0 -12px 30px rgba(0,0,0,.25)}
+  .filters.open{display:block}
+  .apply{display:block;background:var(--ink);color:var(--surface);border:0;border-radius:12px;padding:10px 18px;font:inherit;font-weight:800;cursor:pointer}
+  .fab{display:block;position:fixed;bottom:14px;left:14px;right:14px;z-index:25;background:var(--ink);color:var(--surface);border:0;border-radius:14px;padding:14px;font:inherit;font-size:16px;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  main{padding-bottom:90px}
 }
 @media (max-width:560px){
   .brand small{display:none} .hero h1{font-size:22px}
-  .grid{grid-template-columns:1fr 1fr;gap:10px} .map-card b{font-size:13.5px} .map-card .tx{padding:8px 10px 10px}
+  .grid{grid-template-columns:1fr}
   footer .cta{margin-inline-start:0}
 }
-.nav{overflow-x:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}
-@media (max-width:900px){.nav a{flex:1 0 auto;padding:8px 12px}}
 </style>
 </head>
 <body>
@@ -118,16 +176,63 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
 </div></header>
 
 <main class="wrap">
-  <section class="hero">
-    <h1>خرائط المرحلة 11</h1>
-    <p id="lead">خريطة لكل منطقة في كل مدينة — دوس على أي خريطة تفتحها وتكبّرها.</p>
+  <!-- ========== المدن ========== -->
+  <section id="vCities">
+    <div class="hero">
+      <h1>خرائط المرحلة 11</h1>
+      <p>اكتب المقدم اللي معاك، وهتشوف فين تلحق قطعة، وعلى الخريطة بالظبط.</p>
+    </div>
+    <div class="budget">
+      <label for="budget">💵 المقدم اللي معاك كام؟</label>
+      <div class="b-in"><span>$</span><input id="budget" inputmode="numeric" autocomplete="off" placeholder="مثلاً 25,000"><button type="button" id="bClear" aria-label="مسح" hidden>✕</button></div>
+      <div class="presets" id="presets"></div>
+      <small>مش لازم تكتبه — لو عارف المدينة اللي عايزها، اختارها من تحت على طول.</small>
+    </div>
+    <div class="row">
+      <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="ابحث عن مدينة…" autocomplete="off"></label>
+      <select id="sort" aria-label="ترتيب">
+        <option value="hot">الأكتر طلباً</option>
+        <option value="fit">الأكتر قطع تناسبني</option>
+        <option value="avail">الأكتر متاح</option>
+        <option value="dp">أقل مقدم</option>
+        <option value="az">أبجدي</option>
+      </select>
+    </div>
+    <div class="grid" id="cities"><div class="empty">جاري تحميل المدن والقطع المتاحة…</div></div>
   </section>
-  <div class="tools">
-    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" type="search" placeholder="ابحث باسم المنطقة أو المجاورة…" autocomplete="off"></label>
-    <div class="chips" id="chips"></div>
-  </div>
-  <div id="list"><div class="empty">جاري تحميل الخرائط…</div></div>
+
+  <!-- ========== المدينة ========== -->
+  <section id="vCity" hidden>
+    <button class="back" id="back" type="button">→ كل المدن</button>
+    <h1 id="cName" style="margin:0;font-size:26px;font-weight:900"></h1>
+    <div class="stats">
+      <div><span>متاح دلوقتي</span><b id="sAvail">—</b></div>
+      <div><span>محجوز</span><b id="sBooked">—</b></div>
+      <div><span>أقل مقدم متاح</span><b id="sMin">—</b></div>
+      <div><span>عدد المناطق</span><b id="sZones">—</b></div>
+    </div>
+    <div class="layout">
+      <aside class="filters" id="filters">
+        <div class="fg"><h4>المقدم اللي معاك ($)</h4><div class="f-in"><input id="fBudget" inputmode="numeric" placeholder="لحد كام؟" autocomplete="off"></div></div>
+        <div class="fg"><h4>المناطق</h4><div class="chips" id="zChips"></div></div>
+        <details class="more" id="more"><summary>+ فلاتر إضافية (المساحة، ناصية، حديقة)</summary>
+          <div class="fg"><h4>المساحة (م²)</h4><div class="range"><input id="aMin" inputmode="numeric" placeholder="من"><input id="aMax" inputmode="numeric" placeholder="لحد"></div></div>
+          <div class="fg"><h4>المميزات</h4><div class="chips"><button type="button" class="chip" data-f="corner">ناصية</button><button type="button" class="chip" data-f="garden">حديقة</button></div></div>
+        </details>
+        <div class="f-foot"><button class="clear" id="clr" type="button">مسح الفلاتر</button><button class="apply" id="apply" type="button">عرض النتايج</button></div>
+      </aside>
+      <div>
+        <div class="legend"><span><i style="background:#1FB25A;border-radius:50%"></i>تناسبك</span><span><i style="background:#E8E1CF"></i>متاحة</span><span><i style="background:#C8282C"></i>محجوزة</span></div>
+        <div class="grid" id="zones"></div>
+        <div class="sec-h"><h2 id="pTitle">القطع المتاحة</h2><small id="pCount"></small></div>
+        <div class="plots" id="plots"></div>
+        <button class="more-btn" id="moreBtn" type="button" hidden>اعرض أكتر</button>
+        <p class="note">الحالة بتتحدث لحظة بلحظة من موقع هيئة المجتمعات العمرانية. اتأكد من القطعة قبل الحجز.</p>
+      </div>
+    </div>
+    <button class="fab" id="fab" type="button">🔍 فلترة</button>
+  </section>
 </main>
 
 <footer><div class="wrap">
@@ -137,65 +242,220 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
 </div></footer>
 <script src="mapviewer.js?v=3"></script>
 <script>
+const SB = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
+const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
+const WA = "201009566779";
 const $ = id => document.getElementById(id);
+const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-US");
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const params = new URLSearchParams(location.search);
-let ALL = [], city = params.get("city") || "", q = "";
+const num = v => { const d = String(v || "").replace(/[٠-٩]/g, c => "٠١٢٣٤٥٦٧٨٩".indexOf(c)).replace(/[^\d]/g, ""); return d ? +d : null; };
+const zl = n => n === 1 ? "منطقة واحدة" : n === 2 ? "منطقتين" : n <= 10 ? n + " مناطق" : n + " منطقة";
+const N = s => AGMaps.norm(s);
 
-const countLabel = n => n === 1 ? "خريطة واحدة" : n === 2 ? "خريطتين" : n <= 10 ? n + " خرائط" : n + " خريطة";
-function cities(){
-  const m = new Map(); ALL.forEach(it => m.set(it.city, (m.get(it.city) || 0) + 1)); return [...m];
+function sb(path, headers){ return fetch(SB + path, {cache:"no-store", headers:Object.assign({apikey:KEY, Authorization:"Bearer " + KEY}, headers || {})}); }
+async function sbAll(path){            // all rows, pages fetched in parallel
+  const first = await sb(path, {"Range-Unit":"items", Range:"0-999", Prefer:"count=exact"});
+  if (!first.ok) throw new Error("sb " + first.status);
+  const rows = await first.json(), total = +((first.headers.get("content-range") || "").split("/")[1] || rows.length);
+  const pages = [];
+  for (let from = 1000; from < total; from += 1000)
+    pages.push(sb(path, {"Range-Unit":"items", Range:from + "-" + (from + 999)}).then(r => { if (!r.ok) throw new Error("sb " + r.status); return r.json(); }));
+  (await Promise.all(pages)).forEach(p => rows.push(...p));
+  return rows;
 }
-function shown(){
-  const nq = AGMaps.norm(q);
-  return ALL.filter(it => (!city || it.city === city) && (!nq || AGMaps.norm(it.area + it.city).includes(nq)));
-}
-function renderChips(){
-  $("chips").innerHTML = `<button class="chip${city ? "" : " on"}" data-c="">كل المدن<b>${ALL.length}</b></button>` +
-    cities().map(([c, n]) => `<button class="chip${c === city ? " on" : ""}" data-c="${esc(c)}">${esc(c)}<b>${n}</b></button>`).join("");
-}
-function render(){
-  const list = shown();
-  if (!list.length){ $("list").innerHTML = `<div class="empty">مفيش خرائط بالاسم ده</div>`; return; }
-  const groups = new Map(); list.forEach(it => { if (!groups.has(it.city)) groups.set(it.city, []); groups.get(it.city).push(it); });
-  $("list").innerHTML = [...groups].map(([c, arr]) => `<section class="city-sec"><div class="city-h"><h2>${esc(c)}</h2><small>${countLabel(arr.length)}</small></div>
-    <div class="grid">${arr.map(it => `<button class="map-card" type="button" data-i="${it.i}">
-      <div class="th" style="background-image:url('${it.thumb}')"></div>
-      <div class="tx"><b>${esc(it.area)}</b><small>${esc(it.city)}</small></div></button>`).join("")}</div></section>`).join("");
-}
-function setCity(c){
-  city = c; renderChips(); render();
-  const u = new URL(location.href); c ? u.searchParams.set("city", c) : u.searchParams.delete("city"); u.searchParams.delete("area");
+
+/* ---------- state ---------- */
+const P = new URLSearchParams(location.search);
+const S = {
+  budget: num(P.get("b")), city: P.get("city") || "", q: "", sort: "hot",
+  zones: new Set((P.get("zones") || "").split(",").filter(Boolean)),
+  aMin: num(P.get("amin")), aMax: num(P.get("amax")), corner: P.get("corner") === "1", garden: P.get("garden") === "1", shown: 30
+};
+let MAPS = [], ZONES = [], PLOTS = [], HOT = new Map(), byZone = new Map(), mapByZid = new Map();
+
+function syncUrl(){
+  const u = new URL(location.href), sp = u.searchParams;
+  const set = (k, v) => v ? sp.set(k, v) : sp.delete(k);
+  set("b", S.budget); set("city", S.city); set("zones", S.city ? [...S.zones].join(",") : "");
+  set("amin", S.city && S.aMin); set("amax", S.city && S.aMax); set("corner", S.city && S.corner ? "1" : ""); set("garden", S.city && S.garden ? "1" : "");
+  sp.delete("area");
   history.replaceState(null, "", u);
 }
-$("chips").addEventListener("click", e => { const b = e.target.closest(".chip"); if (b) setCity(b.dataset.c); });
-$("q").addEventListener("input", e => { q = e.target.value; if (q && city) setCity(""); else render(); });
-$("list").addEventListener("click", e => {
-  const b = e.target.closest(".map-card"); if (!b) return;
-  AGMaps.open(+b.dataset.i, shown());
-});
+const fitsBudget = p => !S.budget || p.d <= S.budget;
+const fitsAll = p => fitsBudget(p) && (S.aMin == null || p.a >= S.aMin) && (S.aMax == null || p.a <= S.aMax) && (!S.corner || p.c) && (!S.garden || p.g);
+const anyFilter = () => !!(S.budget || S.aMin || S.aMax || S.corner || S.garden);
 
-AGMaps.load().then(items => {
-  ALL = items;
-  if (city && !ALL.some(it => it.city === city)) city = "";
-  $("lead").textContent = `${ALL.length} خريطة في ${cities().length} مدينة — دوس على أي خريطة تفتحها وتكبّرها، وتقدر تحمّلها.`;
-  renderChips(); render();
-  const a = params.get("area");
-  if (a){ const i = AGMaps.find(city || params.get("city"), a); if (i >= 0) AGMaps.open(i, shown()); }
-  const on = document.querySelector(".chip.on"); if (on) on.scrollIntoView({inline:"center", block:"nearest"});
-}).catch(e => { console.error(e); $("list").innerHTML = `<div class="empty">مقدرناش نحمّل الخرائط — جرّب تاني</div>`; });
+/* ---------- cities ---------- */
+function cityStats(){
+  const m = new Map();
+  ZONES.forEach(z => {
+    const c = m.get(z.city) || {city:z.city, total:0, booked:0, avail:0, zones:0, min:null, fit:0, hot:HOT.get(z.city) || 0};
+    c.total += z.total_plots; c.booked += z.booked; c.avail += z.available; c.zones++; m.set(z.city, c);
+  });
+  PLOTS.forEach(p => { const c = m.get(p.city); if (!c) return; if (c.min == null || p.d < c.min) c.min = p.d; if (fitsBudget(p)) c.fit++; });
+  return [...m.values()];
+}
+function renderCities(){
+  const nq = N(S.q), B = S.budget;
+  let list = cityStats().filter(c => !nq || N(c.city).includes(nq));
+  const hotRank = [...HOT].sort((a, b) => b[1] - a[1]).slice(0, 6).filter(x => x[1] >= 15).map(x => x[0]);
+  const isHot = c => hotRank.includes(c.city) && c.avail > 0;
+  const key = {
+    hot: c => -((c.avail ? 0 : -1e9) + (B && !c.fit ? -1e8 : 0) + (isHot(c) ? 1e6 : 0) + c.hot * 1e3 + c.booked / Math.max(1, c.total)),
+    fit: c => -(c.fit * 1e3 + c.hot), avail: c => -c.avail, dp: c => c.min ?? 1e12, az: c => c.city
+  }[S.sort];
+  list.sort((a, b) => { const x = key(a), y = key(b); return typeof x === "string" ? x.localeCompare(y, "ar") : x - y; });
+  $("cities").innerHTML = list.length ? list.map(c => {
+    const pct = Math.round(100 * c.booked / Math.max(1, c.total)), done = !c.avail;
+    const badge = done ? '<span class="badge done">خلصت ✓</span>' : isHot(c) ? '<span class="badge hot">🔥 طلبها بيزيد</span>' : "";
+    const fit = B && !done ? `<div class="fit${c.fit ? "" : " none"}">${c.fit ? `✓ ${fmt(c.fit)} قطعة تناسب مقدمك` : "مفيش قطع في حدود مقدمك"}</div>` : "";
+    return `<button class="card${B && !c.fit ? " dim" : ""}" type="button" data-c="${esc(c.city)}"><div class="c-body">${badge}
+      <h3>${esc(c.city)}</h3><div class="c-sub">${zl(c.zones)}</div>
+      <div class="kv"><span>متاح</span><b class="g">${fmt(c.avail)}</b></div>
+      <div class="kv"><span>أقل مقدم</span><b>${c.min != null ? fmt(c.min) + " $" : "—"}</b></div>
+      <div class="pb"><i style="width:${pct}%"></i></div><div class="pct">${pct}% محجوز</div>${fit}</div></button>`;
+  }).join("") : `<div class="empty">مفيش مدينة بالاسم ده</div>`;
+}
+
+/* ---------- city ---------- */
+function openCity(c, keep){
+  S.city = c; if (!keep){ S.zones.clear(); S.aMin = S.aMax = null; S.corner = S.garden = false; }
+  S.shown = 30; $("vCities").hidden = true; $("vCity").hidden = false; $("cName").textContent = c;
+  $("fBudget").value = S.budget ? fmt(S.budget) : ""; $("aMin").value = S.aMin || ""; $("aMax").value = S.aMax || "";
+  document.querySelectorAll("[data-f]").forEach(b => b.classList.toggle("on", !!S[b.dataset.f]));
+  if (S.aMin || S.aMax || S.corner || S.garden) $("more").open = true;
+  const zs = ZONES.filter(z => z.city === c);
+  $("zChips").innerHTML = zs.map(z => `<button type="button" class="chip${S.zones.has(String(z.zone_id)) ? " on" : ""}" data-z="${z.zone_id}"><bdi>${esc(z.zone_name || z.project)}</bdi> <b>(${fmt(z.available)})</b></button>`).join("");
+  renderCity(); syncUrl(); window.scrollTo(0, 0);
+}
+function zoneLabel(z){ return z.zone_name || z.project || ("منطقة " + z.zone_id); }
+function renderCity(){
+  const c = S.city, zs = ZONES.filter(z => z.city === c), cp = PLOTS.filter(p => p.city === c);
+  const tot = zs.reduce((a, z) => a + z.total_plots, 0), bk = zs.reduce((a, z) => a + z.booked, 0);
+  $("sAvail").textContent = fmt(cp.length); $("sBooked").textContent = fmt(bk); $("sZones").textContent = zs.length;
+  $("sMin").textContent = cp.length ? fmt(Math.min(...cp.map(p => p.d))) + " $" : "—";
+  const chosen = zs.filter(z => !S.zones.size || S.zones.has(String(z.zone_id)));
+  const cards = chosen.map(z => { const ps = byZone.get(String(z.zone_id)) || []; return {z, m: ps.filter(fitsAll).length}; });
+  if (anyFilter()) cards.sort((a, b) => (b.m > 0) - (a.m > 0) || b.m - a.m);
+  $("zones").innerHTML = cards.map(({z, m}) => {
+    const mp = mapByZid.get(String(z.zone_id)), pct = Math.round(100 * z.booked / Math.max(1, z.total_plots));
+    const fit = anyFilter() ? `<div class="fit${m ? "" : " none"}">${m ? `✓ ${fmt(m)} قطعة تناسبك` : "مفيش قطع تناسب الفلتر"}</div>` : "";
+    return `<button class="card${anyFilter() && !m ? " dim" : ""}" type="button" data-zone="${z.zone_id}">
+      ${mp ? `<div class="thumb" style="background-image:url('${mp.thumb}')"></div>` : ""}
+      <div class="c-body"><h3 style="font-size:16.5px"><bdi>${esc(zoneLabel(z))}</bdi></h3>
+      ${fit}<div class="kv"><span>متاح ${fmt(z.available)} من ${fmt(z.total_plots)}</span><span style="color:var(--gold-ink);font-weight:700">${mp ? "افتح الخريطة ←" : ""}</span></div>
+      <div class="pb"><i style="width:${pct}%"></i></div></div></button>`;
+  }).join("") || `<div class="empty">مفيش مناطق</div>`;
+  // plot list
+  const ids = new Set(chosen.map(z => String(z.zone_id)));
+  const list = cp.filter(p => ids.has(p.z) && fitsAll(p)).sort((a, b) => a.d - b.d || a.a - b.a);
+  $("pTitle").textContent = anyFilter() ? "القطع اللي تناسبك" : "القطع المتاحة";
+  $("pCount").textContent = fmt(list.length) + " قطعة · الأرخص الأول";
+  $("plots").innerHTML = list.slice(0, S.shown).map(p => {
+    const z = ZONES.find(x => String(x.zone_id) === p.z), zn = zoneLabel(z), hasMap = mapByZid.has(p.z);
+    const msg = `مساء الخير، عايز أستفسر عن القطعة رقم ${p.n} — ${p.b} — ${zn} — ${c} (مساحة ${fmt(p.a)} م²، مقدم ${fmt(p.d)} $) — المرحلة 11`;
+    return `<div class="plot"><div class="pn"><b>قطعة ${esc(p.n)}${p.c ? '<span class="tag">ناصية</span>' : ""}${p.g ? '<span class="tag">حديقة</span>' : ""}</b>
+      <small>${N(p.b) === N(zn) ? esc(zn) : esc(p.b) + " · " + esc(zn)}</small></div>
+      <div class="pv"><b>${fmt(p.d)} $</b><small>${fmt(p.a)} م²</small></div>
+      <div class="pa">${hasMap ? `<button type="button" data-map="${p.z}" title="شوفها على الخريطة">🗺</button>` : ""}
+      <a class="wa" href="https://wa.me/${WA}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener" title="اسأل على القطعة دي">💬</a></div></div>`;
+  }).join("") || `<div class="empty">مفيش قطع متاحة بالفلاتر دي — جرّب تزوّد المقدم أو تشيل فلتر</div>`;
+  $("moreBtn").hidden = list.length <= S.shown;
+  const act = (S.zones.size ? 1 : 0) + (S.budget ? 1 : 0) + (S.aMin || S.aMax ? 1 : 0) + (S.corner ? 1 : 0) + (S.garden ? 1 : 0);
+  $("fab").textContent = `🔍 فلترة${act ? ` (${act})` : ""} · ${fmt(list.length)} قطعة`;
+}
+
+/* ---------- map + "fits you" overlay (drawn on top of the shared viewer, no change to it) ---------- */
+function openZoneMap(zid){
+  const mp = mapByZid.get(String(zid)); if (!mp) return;
+  const cityMaps = MAPS.filter(m => m.city === S.city);
+  AGMaps.open(mp.i, cityMaps).then(() => { watchViewer(); drawFit(); });
+}
+let watching = false;
+function currentItem(){
+  const t = document.querySelector(".agmv-t b"), s = document.querySelector(".agmv-t small"); if (!t || !s) return null;
+  const i = AGMaps.find(s.textContent.split("  ·  ")[0], t.textContent); return i >= 0 ? MAPS[i] : null;
+}
+function watchViewer(){
+  if (watching) return; const t = document.querySelector(".agmv-t b"); if (!t) return; watching = true;
+  new MutationObserver(() => drawFit()).observe(t, {childList:true, characterData:true, subtree:true});
+}
+function drawFit(){
+  const layer = document.querySelector(".agmv-layer"), bot = document.querySelector(".agmv-bot"); if (!layer) return;
+  let ov = layer.querySelector("svg.agfit"), chip = bot && bot.querySelector(".agfit-chip");
+  if (!ov){ ov = document.createElementNS("http://www.w3.org/2000/svg", "svg"); ov.setAttribute("class", "agfit");
+    ov.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none"; layer.appendChild(ov); }
+  if (bot && !chip){ chip = document.createElement("span"); chip.className = "agfit-chip"; chip.innerHTML = "<i></i><span></span>"; bot.insertBefore(chip, bot.children[2] || null); }
+  const it = currentItem(); ov.innerHTML = "";
+  if (!it || !anyFilter()){ if (chip) chip.hidden = true; return; }
+  const ok = new Set((byZone.get(String(it.zid)) || []).filter(fitsAll).map(p => N(p.b) + "|" + N(p.n)));
+  ov.setAttribute("viewBox", `0 0 ${it.w} ${it.h}`);
+  const r = Math.max(14, (it.r || 14) * 1.25); let n = 0, out = "";
+  (it.plots || []).forEach(pl => { if (ok.has(N(it.blocks[pl[1]]) + "|" + N(pl[0]))){ n++;
+    out += `<circle cx="${pl[2]}" cy="${pl[3]}" r="${r}" fill="rgba(31,178,90,.28)" stroke="#1FB25A" stroke-width="${Math.max(3, r / 5)}"/>`; } });
+  ov.innerHTML = out;
+  if (chip){ chip.hidden = false; chip.querySelector("span").textContent = n ? `تناسبك ${n}` : "مفيش قطع تناسبك هنا"; }
+}
+
+/* ---------- events ---------- */
+function setBudget(v, from){
+  S.budget = num(v);
+  if (from !== "main") $("budget").value = S.budget ? fmt(S.budget) : "";
+  if (from !== "side") $("fBudget").value = S.budget ? fmt(S.budget) : "";
+  $("bClear").hidden = !S.budget;
+  document.querySelectorAll("#presets button").forEach(b => b.classList.toggle("on", +b.dataset.b === S.budget));
+  S.shown = 30; syncUrl();
+  if (S.city) renderCity(); else renderCities();
+}
+$("presets").innerHTML = [15000, 20000, 25000, 30000, 40000, 60000].map(v => `<button type="button" data-b="${v}">${v / 1000} ألف</button>`).join("");
+$("presets").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setBudget(b.dataset.b); });
+$("budget").addEventListener("input", e => setBudget(e.target.value, "main"));
+$("budget").addEventListener("blur", e => { if (S.budget) e.target.value = fmt(S.budget); });
+$("bClear").addEventListener("click", () => setBudget(""));
+$("fBudget").addEventListener("input", e => setBudget(e.target.value, "side"));
+$("q").addEventListener("input", e => { S.q = e.target.value; renderCities(); });
+$("sort").addEventListener("change", e => { S.sort = e.target.value; renderCities(); });
+$("cities").addEventListener("click", e => { const b = e.target.closest("[data-c]"); if (b) openCity(b.dataset.c); });
+$("back").addEventListener("click", () => { S.city = ""; $("vCity").hidden = true; $("vCities").hidden = false; $("filters").classList.remove("open"); syncUrl(); renderCities(); });
+$("zChips").addEventListener("click", e => { const b = e.target.closest("[data-z]"); if (!b) return; const z = b.dataset.z;
+  S.zones.has(z) ? S.zones.delete(z) : S.zones.add(z); b.classList.toggle("on"); S.shown = 30; syncUrl(); renderCity(); });
+["aMin", "aMax"].forEach(id => $(id).addEventListener("input", e => { S[id] = num(e.target.value); S.shown = 30; syncUrl(); renderCity(); }));
+document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => { const f = b.dataset.f; S[f] = !S[f]; b.classList.toggle("on", S[f]); syncUrl(); renderCity(); }));
+$("clr").addEventListener("click", () => { S.zones.clear(); S.aMin = S.aMax = null; S.corner = S.garden = false; openCity(S.city, true); setBudget(""); });
+$("zones").addEventListener("click", e => { const b = e.target.closest("[data-zone]"); if (b) openZoneMap(b.dataset.zone); });
+$("plots").addEventListener("click", e => { const b = e.target.closest("[data-map]"); if (b) openZoneMap(b.dataset.map); });
+$("moreBtn").addEventListener("click", () => { S.shown += 30; renderCity(); });
+$("fab").addEventListener("click", () => $("filters").classList.toggle("open"));
+$("apply").addEventListener("click", () => { $("filters").classList.remove("open"); $("zones").scrollIntoView({behavior:"smooth", block:"start"}); });
+
+/* ---------- load ---------- */
+(async () => {
+  try {
+    const since = new Date(Date.now() - 7 * 864e5).toISOString();
+    const [maps, zones, plots, recent] = await Promise.all([
+      AGMaps.load(),
+      sbAll("v_stats_by_zone?select=zone_id,city,project,zone_name,total_plots,booked,available&order=zone_id"),
+      sbAll("plots?select=z:zone_id,b:block,n:plot_number,a:area_sqm,d:down_payment,c:corner,g:garden&status=eq.available&is_active=eq.true&order=id"),
+      sb("plot_changes?select=plot_id&to_value=eq.unavailable&created_at=gte." + encodeURIComponent(since) + "&limit=5000").then(r => r.ok ? r.json() : []).catch(() => [])
+    ]);
+    MAPS = maps; maps.forEach(m => mapByZid.set(String(m.zid), m));
+    ZONES = zones.filter(z => z.total_plots > 0);
+    const zCity = new Map(ZONES.map(z => [String(z.zone_id), z.city]));
+    PLOTS = plots.filter(p => p.d != null).map(p => ({z:String(p.z), city:zCity.get(String(p.z)), b:p.b, n:String(p.n), a:+p.a || 0, d:+p.d, c:!!p.c, g:!!p.g}));
+    PLOTS.forEach(p => { if (!byZone.has(p.z)) byZone.set(p.z, []); byZone.get(p.z).push(p); });
+    recent.forEach(r => { const c = String(r.plot_id).split("|")[0]; HOT.set(c, (HOT.get(c) || 0) + 1); });
+    if (S.budget) setBudget(S.budget); else renderCities();
+    if (S.city && ZONES.some(z => z.city === S.city)) openCity(S.city, true); else S.city = "";
+    const a = P.get("area"); if (a && S.city){ const i = AGMaps.find(S.city, a); if (i >= 0) AGMaps.open(i, MAPS.filter(m => m.city === S.city)).then(() => { watchViewer(); drawFit(); }); }
+  } catch (e) {
+    console.error(e); $("cities").innerHTML = `<div class="empty">مقدرناش نحمّل البيانات — جرّب تحدّث الصفحة</div>`;
+  }
+})();
 
 /* theme */
-function paintThemeBtn(){
-  const dark = document.documentElement.getAttribute("data-theme") === "dark";
-  $("themeBtn").textContent = dark ? "☀" : "☾"; $("themeBtn").title = dark ? "الوضع الفاتح" : "الوضع الغامق";
-}
-$("themeBtn").addEventListener("click", () => {
-  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-  document.documentElement.setAttribute("data-theme", next);
-  try { localStorage.setItem("ag-theme", next); } catch (e) {}
-  paintThemeBtn();
-});
+function paintThemeBtn(){ const d = document.documentElement.getAttribute("data-theme") === "dark"; $("themeBtn").textContent = d ? "☀" : "☾"; $("themeBtn").title = d ? "الوضع الفاتح" : "الوضع الغامق"; }
+$("themeBtn").addEventListener("click", () => { const n = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", n); try { localStorage.setItem("ag-theme", n); } catch (e) {} paintThemeBtn(); });
 paintThemeBtn();
 </script>
 </body>
