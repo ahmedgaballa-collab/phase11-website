@@ -3,7 +3,7 @@
    AGMaps.find(city, area)  -> index or -1
    AGMaps.open(index, list?) opens the full-screen viewer (pinch / wheel / drag / double-tap zoom) */
 (function () {
-  var MANIFEST = "maps/maps.json", WA = "201009566779";
+  var MANIFEST = "maps/maps.json?v=" + Math.floor(Date.now() / 600000), WA = "201009566779";
   var items = null, loading = null;
 
   function norm(s) {

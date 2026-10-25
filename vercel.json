@@ -16,5 +16,25 @@
       "source": "/about",
       "destination": "/about.html"
     }
+  ],
+  "headers": [
+    {
+      "source": "/maps/maps.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/mapviewer.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
   ]
 }
