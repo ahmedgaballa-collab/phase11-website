@@ -346,8 +346,20 @@
         var m = Math.max(r * 6, (bx1 - bx0 + by1 - by0) * .08);
         var x0 = Math.max(0, Math.round(bx0 - m)), y0 = Math.max(0, Math.round(by0 - m)), x1 = Math.min(it.w, Math.round(bx1 + m)), y1 = Math.min(it.h, Math.round(by1 + m));
         var o = document.createElement("canvas"); o.width = (x1 - x0) * K; o.height = (y1 - y0) * K; var c = o.getContext("2d");
+        // keep only the zone itself: clip to the outline (convex hull) of its plots, pushed out a little
+        var P = it.plots.map(function (p) { return [p[2], p[3]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+        var cr = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }, lo = [], up = [];
+        P.forEach(function (p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); });
+        P.slice().reverse().forEach(function (p) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); });
+        var hull = lo.slice(0, -1).concat(up.slice(0, -1)), hx = 0, hy = 0; hull.forEach(function (p) { hx += p[0]; hy += p[1]; }); hx /= hull.length || 1; hy /= hull.length || 1;
+        var pad = r * 4.5;
+        c.save(); c.beginPath();
+        if (hull.length >= 3) hull.forEach(function (p, k) { var dx = p[0] - hx, dy = p[1] - hy, d = Math.hypot(dx, dy) || 1, X = (p[0] + dx / d * pad - x0) * K, Y = (p[1] + dy / d * pad - y0) * K; k ? c.lineTo(X, Y) : c.moveTo(X, Y); });
+        else c.rect(0, 0, o.width, o.height);
+        c.closePath(); c.clip();
         c.imageSmoothingQuality = "high"; c.drawImage(v[1], x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height); c.drawImage(cv, x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height);
         c.setTransform(K, 0, 0, K, -x0 * K, -y0 * K); R.labs.forEach(function (L) { textBlock(c, L, L.f); });
+        c.restore();
         var ks = []; it.plots.forEach(function (p, id) { var inf = v[0].info(p), px = A.reg[id]; if (inf && inf.a > 0 && px && px.length > 30) ks.push(Math.sqrt(inf.a / px.length)); });
         ks.sort(function (a, b) { return a - b; });
         return { canvas: o, crop: [x0, y0, x1, y1], mpp: ks.length ? ks[ks.length >> 1] * .93 : null, booked: R.n, total: it.plots.length, it: it };
