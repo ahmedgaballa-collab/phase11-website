@@ -172,14 +172,14 @@ function hideZone(m){ const e = OV.get(m.zid); if (e && e.layer && map.hasLayer(
 function refreshOverlays(){
   if (EDIT) return;
   const show = map.getZoom() >= 14, b = map.getBounds().pad(.3);
-  MAPS.forEach(m => { const g = geoOf(m); if (!g) return; if (show && b.contains(g.c)) showZone(m); else hideZone(m); });
+  MAPS.forEach(m => { const g = geoOf(m); if (!g || m.zid === "4803") return; if (show && b.contains(g.c)) showZone(m); else hideZone(m); });
 }
 map.on("moveend zoomend", refreshOverlays);
 
 /* ---------- pins, list ---------- */
 function popup(m){
   const z = STATS.get(String(m.zid)), pct = z ? Math.round(100 * z.booked / Math.max(1, z.total_plots)) : 0;
-  const g = `https://www.google.com/maps?q=${m.loc[0]},${m.loc[1]}`, live = geoOf(m);
+  const g = `https://www.google.com/maps?q=${m.loc[0]},${m.loc[1]}`, live = m.zid === "4803" ? null : geoOf(m);
   return `<div class="pop"><small>${esc(m.city)}</small><h3>${esc(m.area)}</h3>
     ${z ? `<div>متاح <b>${fmt(z.available)}</b> من ${fmt(z.total_plots)} قطعة</div><div class="bar"><i style="width:${pct}%"></i></div>` : ""}
     <div class="btns">${live ? `<button class="b1" type="button" data-zoom="${m.i}">🛰 شوفها على الأرض</button>` : ""}<button class="${live ? "b2" : "b1"}" type="button" data-open="${m.i}">🗺 خريطة القطع</button><a class="b2" href="${g}" target="_blank" rel="noopener">📍 جوجل ماب</a></div>
