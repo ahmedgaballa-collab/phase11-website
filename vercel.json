@@ -15,10 +15,6 @@
     {
       "source": "/about",
       "destination": "/about.html"
-    },
-    {
-      "source": "/sat",
-      "destination": "/sat.html"
     }
   ],
   "headers": [
