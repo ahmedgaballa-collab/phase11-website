@@ -336,7 +336,7 @@
   }
   /* live map for the satellite page: the zone (cropped around its plots) with booked plots red and crisp labels,
      plus its scale in metres per image pixel (from the plots' real areas vs their size on the image) */
-  function overlay(i, K) {
+  function overlay(i, K, full) {
     return load().then(function (all) {
       var it = all[i]; K = K || 2;
       return Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
@@ -345,6 +345,7 @@
         var bx0 = Math.min.apply(null, xs), bx1 = Math.max.apply(null, xs), by0 = Math.min.apply(null, ys), by1 = Math.max.apply(null, ys);
         var m = Math.max(r * 6, (bx1 - bx0 + by1 - by0) * .08);
         var x0 = Math.max(0, Math.round(bx0 - m)), y0 = Math.max(0, Math.round(by0 - m)), x1 = Math.min(it.w, Math.round(bx1 + m)), y1 = Math.min(it.h, Math.round(by1 + m));
+        if (full) { x0 = 0; y0 = 0; x1 = it.w; y1 = it.h; }
         var o = document.createElement("canvas"); o.width = (x1 - x0) * K; o.height = (y1 - y0) * K; var c = o.getContext("2d");
         // keep only the zone itself: clip to the outline (convex hull) of its plots, pushed out a little
         var P = it.plots.map(function (p) { return [p[2], p[3]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
@@ -360,7 +361,7 @@
         mc.setTransform(K, 0, 0, K, -x0 * K, -y0 * K); mc.beginPath();
         (hull.length ? hull : P).forEach(function (p, k) { k ? mc.lineTo(p[0], p[1]) : mc.moveTo(p[0], p[1]); }); mc.closePath();
         mc.fillStyle = mc.strokeStyle = "#000"; mc.lineJoin = mc.lineCap = "round"; mc.lineWidth = pad * 2; mc.fill(); mc.stroke();
-        c.globalCompositeOperation = "destination-in"; c.drawImage(mk, 0, 0); c.globalCompositeOperation = "source-over";
+        if (!full) { c.globalCompositeOperation = "destination-in"; c.drawImage(mk, 0, 0); c.globalCompositeOperation = "source-over"; }
         var ks = []; it.plots.forEach(function (p, id) { var inf = v[0].info(p), px = A.reg[id]; if (inf && inf.a > 0 && px && px.length > 30) ks.push(Math.sqrt(inf.a / px.length)); });
         ks.sort(function (a, b) { return a - b; });
         return { canvas: o, crop: [x0, y0, x1, y1], mpp: ks.length ? ks[ks.length >> 1] * .93 : null, booked: R.n, total: it.plots.length, it: it };

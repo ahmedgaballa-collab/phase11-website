@@ -120,7 +120,7 @@ body{display:flex;flex-direction:column}
   <div class="list" id="list"></div>
 </aside>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="mapviewer.js?v=8"></script>
+<script src="mapviewer.js?v=9"></script>
 <script>
 const SB = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
@@ -153,17 +153,19 @@ const Placed = L.Layer.extend({
     this.cv.style.transform = `matrix(${(b.x - a.x) / w},${(b.y - a.y) / w},${(c.x - a.x) / h},${(c.y - a.y) / h},${a.x},${a.y})`; }
 });
 function corners(g, O){ // image-pixel corners of the crop -> lat/lng, given centre, rotation (deg, clockwise) and metres per pixel
-  const w = O.crop[2] - O.crop[0], h = O.crop[3] - O.crop[1], r = g.r * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r), k = Math.cos(g.c[0] * Math.PI / 180);
-  const at = (u, v) => { const e = g.s * (u * cs - v * sn), so = g.s * (u * sn + v * cs); return L.latLng(g.c[0] - so / 111320, g.c[1] + e / (111320 * k)); };
-  return [at(-w / 2, -h / 2), at(w / 2, -h / 2), at(-w / 2, h / 2)];
+  // g.c = where the centre of the whole map image sits on the ground
+  const W2 = O.it.w / 2, H2 = O.it.h / 2, r = g.r * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r), k = Math.cos(g.c[0] * Math.PI / 180);
+  const at = (x, y) => { const u = x - W2, v = y - H2, e = g.s * (u * cs - v * sn), so = g.s * (u * sn + v * cs); return L.latLng(g.c[0] - so / 111320, g.c[1] + e / (111320 * k)); };
+  return [at(O.crop[0], O.crop[1]), at(O.crop[2], O.crop[1]), at(O.crop[0], O.crop[3])];
 }
 const OV = new Map(); // zid -> {O, layer}
 async function showZone(m){
   let e = OV.get(m.zid); if (e && e.busy) return e.busy;
   if (!e){ e = {}; OV.set(m.zid, e);
-    e.busy = AGMaps.overlay(m.i).then(O => { e.O = O; e.layer = new Placed(O.canvas); e.busy = null; return e; }); await e.busy; }
+    e.busy = AGMaps.overlay(m.i, EDIT ? 1 : 2, EDIT).then(O => { e.O = O; e.layer = new Placed(O.canvas); e.busy = null; return e; }); await e.busy; }
   let g = geoOf(m) || {c: m.loc, r: 0, s: 0, auto: 1};
-  if (!g.s){ g = AUTO[m.zid] = {c: g.c, r: 0, s: e.O.mpp || .5, auto: 1}; }
+  if (!g.s){ const s0 = e.O.mpp || .5, P = m.plots, px = P.reduce((a, p) => a + p[2], 0) / P.length - m.w / 2, py = P.reduce((a, p) => a + p[3], 0) / P.length - m.h / 2;
+    g = AUTO[m.zid] = {c: [g.c[0] + py * s0 / 111320, g.c[1] - px * s0 / (111320 * Math.cos(g.c[0] * Math.PI / 180))], r: 0, s: s0, auto: 1}; }
   e.g = g; e.layer.setCorners(...corners(g, e.O)); if (!map.hasLayer(e.layer)) e.layer.addTo(map); return e;
 }
 function hideZone(m){ const e = OV.get(m.zid); if (e && e.layer && map.hasLayer(e.layer)) e.layer.remove(); }
