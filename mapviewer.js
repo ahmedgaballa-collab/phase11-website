@@ -294,10 +294,12 @@
 
   var LBL = [], mctx = document.createElement("canvas").getContext("2d");   // labels currently drawn crisp on the overlay: {x, y, a, f, t:[area, no, dp], b: booked}
   function fmt(n) { n = Number(n); if (!isFinite(n)) return ""; return n.toLocaleString("en-US", { maximumFractionDigits: 2 }); }
-  function paintMap(it, im, st) {
-    var A = analyze(it, im), W = A.W, H = A.H; svg.width = W; svg.height = H; LBL = [];
-    var ctx = svg.getContext("2d"); ctx.clearRect(0, 0, W, H);
-    if (!A.Y) return 0;
+  function paintMap(it, im, st, cv) {
+    var own = !cv; cv = cv || svg;
+    var A = analyze(it, im), W = A.W, H = A.H; cv.width = W; cv.height = H; var labs = [];
+    var ctx = cv.getContext("2d"); ctx.clearRect(0, 0, W, H);
+    if (own) LBL = labs;
+    if (!A.Y) return own ? 0 : { n: 0, labs: labs, A: A };
     var out = ctx.createImageData(W, H), od = out.data, Y = A.Y, n = 0;
     function put(q, c) { var j = q * 4; od[j] = c[0]; od[j + 1] = c[1]; od[j + 2] = c[2]; od[j + 3] = 255; }
     var RED = [200, 40, 44], WH = [255, 255, 255];
@@ -317,12 +319,40 @@
         mctx.font = "bold 78px Helvetica, Arial, sans-serif"; var wmax = Math.max(mctx.measureText(tt[0]).width, mctx.measureText(tt[2]).width) / 100;
         mctx.font = "bold 100px Helvetica, Arial, sans-serif"; wmax = Math.max(wmax, mctx.measureText(tt[1]).width / 100);
         if (wmax > 0 && ff * wmax > L.w * 1.08) ff = L.w * 1.08 / wmax;
-        LBL.push({ x: L.x, y: L.y, a: L.a, f: ff, b: b, t: tt });
+        labs.push({ x: L.x, y: L.y, a: L.a, f: ff, b: b, t: tt });
       } else if (b) L.holes.forEach(function (q) { put(q, WH); });
     });
     var o = document.createElement("canvas"); o.width = W; o.height = H; o.getContext("2d").putImageData(out, 0, 0); ctx.drawImage(o, 0, 0);
+    if (!own) return { n: n, labs: labs, A: A };
     drawLabels();
     return n;
+  }
+  function textBlock(c, L, f) {
+    c.save(); c.translate(L.x, L.y); if (L.a) c.rotate(L.a); c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillStyle = L.b ? "#fff" : "#16325C"; c.font = "bold " + (f * .78).toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[0], 0, -f * .95);
+    c.fillStyle = L.b ? "#fff" : "#C8102E"; c.font = "bold " + f.toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[1], 0, 0);
+    c.fillStyle = L.b ? "#fff" : "#16325C"; c.font = "bold " + (f * .78).toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[2], 0, f * .95);
+    c.restore();
+  }
+  /* live map for the satellite page: the zone (cropped around its plots) with booked plots red and crisp labels,
+     plus its scale in metres per image pixel (from the plots' real areas vs their size on the image) */
+  function overlay(i, K) {
+    return load().then(function (all) {
+      var it = all[i]; K = K || 2;
+      return Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
+        var cv = document.createElement("canvas"), R = paintMap(it, v[1], v[0], cv), A = R.A, r = Math.max(8, it.r || 14);
+        var xs = it.plots.map(function (p) { return p[2]; }), ys = it.plots.map(function (p) { return p[3]; });
+        var bx0 = Math.min.apply(null, xs), bx1 = Math.max.apply(null, xs), by0 = Math.min.apply(null, ys), by1 = Math.max.apply(null, ys);
+        var m = Math.max(r * 6, (bx1 - bx0 + by1 - by0) * .08);
+        var x0 = Math.max(0, Math.round(bx0 - m)), y0 = Math.max(0, Math.round(by0 - m)), x1 = Math.min(it.w, Math.round(bx1 + m)), y1 = Math.min(it.h, Math.round(by1 + m));
+        var o = document.createElement("canvas"); o.width = (x1 - x0) * K; o.height = (y1 - y0) * K; var c = o.getContext("2d");
+        c.imageSmoothingQuality = "high"; c.drawImage(v[1], x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height); c.drawImage(cv, x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height);
+        c.setTransform(K, 0, 0, K, -x0 * K, -y0 * K); R.labs.forEach(function (L) { textBlock(c, L, L.f); });
+        var ks = []; it.plots.forEach(function (p, id) { var inf = v[0].info(p), px = A.reg[id]; if (inf && inf.a > 0 && px && px.length > 30) ks.push(Math.sqrt(inf.a / px.length)); });
+        ks.sort(function (a, b) { return a - b; });
+        return { canvas: o, crop: [x0, y0, x1, y1], mpp: ks.length ? ks[ks.length >> 1] * .93 : null, booked: R.n, total: it.plots.length, it: it };
+      });
+    });
   }
   // crisp labels: redrawn in screen pixels on every pan/zoom, so they stay sharp at any zoom
   var lbl = null;
@@ -389,5 +419,5 @@
   function hide() { if (root) root.style.display = "none"; document.documentElement.style.overflow = ""; }
   function close() { if (pushed) { history.back(); } else hide(); }
 
-  window.AGMaps = { load: load, find: find, open: open, norm: norm };
+  window.AGMaps = { load: load, find: find, open: open, norm: norm, overlay: overlay };
 })();

@@ -85,6 +85,12 @@ body{display:flex;flex-direction:column}
 .pop .b1{background:#0B1F3F;color:#fff !important}
 .pop .b2{background:#F7F0DE;color:#8F6E1F !important}
 .pop .note{font-size:11.5px;color:#A23B3B;margin-top:6px}
+/* editor */
+.ed{position:absolute;z-index:600;bottom:14px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 24px));background:var(--surface);border:2px solid var(--gold);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow);display:grid;gap:6px;font-size:13px}
+.ed small{color:var(--ink-3)}
+.ed label{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:8px}
+.ed .row2{display:flex;gap:8px}.ed .row2 button{flex:1;border:0;border-radius:10px;padding:8px;font:inherit;font-weight:800;cursor:pointer;background:var(--ink);color:var(--surface)}
+.ed textarea{height:40px;font-size:11px;direction:ltr}
 @media (max-width:720px){
   .side{top:auto;bottom:12px;inset-inline-end:12px;max-height:46%}
   .side.min .list,.side.min .q,.side.min p,.side.min .legend{display:none}
@@ -114,7 +120,7 @@ body{display:flex;flex-direction:column}
   <div class="list" id="list"></div>
 </aside>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="mapviewer.js?v=5"></script>
+<script src="mapviewer.js?v=6"></script>
 <script>
 const SB = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
@@ -123,19 +129,56 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-US");
 const col = z => !z ? "#7D889C" : !z.available ? "#A23B3B" : z.available / Math.max(1, z.total_plots) < .2 ? "#C9A44C" : "#1F8A4C";
 
-const map = L.map("map", {zoomControl: false, attributionControl: true}).setView([29.6, 31.2], 6);
+const map = L.map("map", {zoomControl: false, attributionControl: true, maxZoom: 20}).setView([29.6, 31.2], 6);
 L.control.zoom({position: "topright"}).addTo(map);
 L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-  maxZoom: 19, maxNativeZoom: 18, attribution: "Imagery © Esri, Maxar, Earthstar Geographics"}).addTo(map);
-L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, maxNativeZoom: 18, opacity: .9}).addTo(map);
+  maxZoom: 20, maxNativeZoom: 18, attribution: "Imagery © Esri, Maxar, Earthstar Geographics"}).addTo(map);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {maxZoom: 20, maxNativeZoom: 18, opacity: .9}).addTo(map);
 
-let MAPS = [], STATS = new Map(), markers = new Map();
+const EDIT = /[?&#]edit/.test(location.search + location.hash);
+let MAPS = [], STATS = new Map(), markers = new Map(), GEO = {};
+try { if (EDIT) GEO = JSON.parse(localStorage.getItem("ag-geo") || "{}"); } catch (e) {}
+const geoOf = m => GEO[m.zid] || m.geo || null;
+
+/* ---------- the live zone map placed on the ground: an image (canvas) stretched between 3 corner points ---------- */
+const Placed = L.Layer.extend({
+  initialize(cv){ this.cv = cv; this.op = .9; },
+  onAdd(m){ this._m = m; this.cv.className = "leaflet-zoom-hide"; this.cv.style.cssText = "position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none;opacity:" + this.op;
+    m.getPanes().overlayPane.appendChild(this.cv); m.on("zoomend viewreset moveend", this._up, this); this._up(); },
+  onRemove(m){ this.cv.remove(); m.off("zoomend viewreset moveend", this._up, this); },
+  setCorners(tl, tr, bl){ this.c = [tl, tr, bl]; if (this._m) this._up(); },
+  setOpacity(o){ this.op = o; this.cv.style.opacity = o; },
+  _up(){ if (!this.c || !this._m) return; const [a, b, c] = this.c.map(p => this._m.latLngToLayerPoint(p)), w = this.cv.width, h = this.cv.height;
+    this.cv.style.transform = `matrix(${(b.x - a.x) / w},${(b.y - a.y) / w},${(c.x - a.x) / h},${(c.y - a.y) / h},${a.x},${a.y})`; }
+});
+function corners(g, O){ // image-pixel corners of the crop -> lat/lng, given centre, rotation (deg, clockwise) and metres per pixel
+  const w = O.crop[2] - O.crop[0], h = O.crop[3] - O.crop[1], r = g.r * Math.PI / 180, cs = Math.cos(r), sn = Math.sin(r), k = Math.cos(g.c[0] * Math.PI / 180);
+  const at = (u, v) => { const e = g.s * (u * cs - v * sn), so = g.s * (u * sn + v * cs); return L.latLng(g.c[0] - so / 111320, g.c[1] + e / (111320 * k)); };
+  return [at(-w / 2, -h / 2), at(w / 2, -h / 2), at(-w / 2, h / 2)];
+}
+const OV = new Map(); // zid -> {O, layer}
+async function showZone(m){
+  let e = OV.get(m.zid); if (e && e.busy) return e.busy;
+  if (!e){ e = {}; OV.set(m.zid, e);
+    e.busy = AGMaps.overlay(m.i).then(O => { e.O = O; e.layer = new Placed(O.canvas); e.busy = null; return e; }); await e.busy; }
+  const g = geoOf(m) || {c: m.loc, r: 0, s: e.O.mpp || .5};
+  e.g = g; e.layer.setCorners(...corners(g, e.O)); if (!map.hasLayer(e.layer)) e.layer.addTo(map); return e;
+}
+function hideZone(m){ const e = OV.get(m.zid); if (e && e.layer && map.hasLayer(e.layer)) e.layer.remove(); }
+function refreshOverlays(){
+  if (EDIT) return;
+  const show = map.getZoom() >= 14, b = map.getBounds().pad(.3);
+  MAPS.forEach(m => { const g = geoOf(m); if (!g) return; if (show && b.contains(g.c)) showZone(m); else hideZone(m); });
+}
+map.on("moveend zoomend", refreshOverlays);
+
+/* ---------- pins, list ---------- */
 function popup(m){
   const z = STATS.get(String(m.zid)), pct = z ? Math.round(100 * z.booked / Math.max(1, z.total_plots)) : 0;
-  const g = `https://www.google.com/maps?q=${m.loc[0]},${m.loc[1]}`;
+  const g = `https://www.google.com/maps?q=${m.loc[0]},${m.loc[1]}`, live = geoOf(m);
   return `<div class="pop"><small>${esc(m.city)}</small><h3>${esc(m.area)}</h3>
     ${z ? `<div>متاح <b>${fmt(z.available)}</b> من ${fmt(z.total_plots)} قطعة</div><div class="bar"><i style="width:${pct}%"></i></div>` : ""}
-    <div class="btns"><button class="b1" type="button" data-open="${m.i}">🗺 خريطة القطع</button><a class="b2" href="${g}" target="_blank" rel="noopener">📍 جوجل ماب</a></div>
+    <div class="btns">${live ? `<button class="b1" type="button" data-zoom="${m.i}">🛰 شوفها على الأرض</button>` : ""}<button class="${live ? "b2" : "b1"}" type="button" data-open="${m.i}">🗺 خريطة القطع</button><a class="b2" href="${g}" target="_blank" rel="noopener">📍 جوجل ماب</a></div>
     ${m.locApprox ? `<div class="note">المكان تقريبي (على مستوى المدينة)</div>` : ""}</div>`;
 }
 function pinIcon(m){
@@ -150,22 +193,57 @@ function draw(){
     const mk = L.marker(m.loc, {icon: pinIcon(m), title: m.city + " — " + m.area}).addTo(map).bindPopup(() => popup(m));
     markers.set(m.i, mk); pts.push(m.loc);
   });
-  if (pts.length && !draw.done){ map.fitBounds(pts, {padding: [40, 40]}); draw.done = 1; }
-  renderList();
+  if (pts.length && !draw.done && !EDIT){ map.fitBounds(pts, {padding: [40, 40]}); draw.done = 1; }
+  renderList(); refreshOverlays();
 }
 function renderList(){
   const q = AGMaps.norm($("q").value), by = new Map();
   MAPS.filter(m => m.loc && (!q || AGMaps.norm(m.city + " " + m.area).includes(q))).forEach(m => { if (!by.has(m.city)) by.set(m.city, []); by.get(m.city).push(m); });
   $("list").innerHTML = [...by].map(([c, ms]) => `<div class="city">${esc(c)}</div>` + ms.map(m => { const z = STATS.get(String(m.zid));
-    return `<button class="z" type="button" data-go="${m.i}"><i style="background:${col(z)}"></i><span>${esc(m.area)}</span><b>${z ? fmt(z.available) + " متاح" : ""}</b></button>`; }).join("")).join("")
+    return `<button class="z" type="button" data-go="${m.i}"><i style="background:${col(z)}"></i><span>${esc(m.area)}${geoOf(m) ? " 🛰" : ""}</span><b>${z ? fmt(z.available) + " متاح" : ""}</b></button>`; }).join("")).join("")
     || `<div class="city" style="color:var(--ink-3)">مفيش نتايج</div>`;
 }
-$("list").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (!b) return; const mk = markers.get(+b.dataset.go);
-  if (mk){ map.flyTo(mk.getLatLng(), 15, {duration: .8}); setTimeout(() => mk.openPopup(), 850); if (innerWidth <= 720) $("side").classList.add("min"); } });
+function goZone(i){ const m = MAPS[i], g = geoOf(m);
+  if (EDIT) return editZone(m);
+  if (g){ map.flyTo(g.c, 16, {duration: .9}); } else { const mk = markers.get(i); map.flyTo(mk.getLatLng(), 15, {duration: .8}); setTimeout(() => mk.openPopup(), 850); }
+  if (innerWidth <= 720) $("side").classList.add("min"); }
+$("list").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) goZone(+b.dataset.go); });
 $("q").addEventListener("input", renderList);
 $("tog").addEventListener("click", () => $("side").classList.toggle("min"));
-map.on("popupopen", e => { const b = e.popup.getElement().querySelector("[data-open]");
-  if (b) b.onclick = () => { const i = +b.dataset.open, c = MAPS[i].city; AGMaps.open(i, MAPS.filter(m => m.city === c)); }; });
+map.on("popupopen", e => { const el = e.popup.getElement(), b = el.querySelector("[data-open]"), z = el.querySelector("[data-zoom]");
+  if (b) b.onclick = () => { const i = +b.dataset.open, c = MAPS[i].city; AGMaps.open(i, MAPS.filter(m => m.city === c)); };
+  if (z) z.onclick = () => { map.closePopup(); goZone(+z.dataset.zoom); }; });
+
+/* ---------- alignment editor (?edit): place each zone map on the ground, then send the numbers ---------- */
+let cur = null, handle = null;
+function saveGeo(){ try { localStorage.setItem("ag-geo", JSON.stringify(GEO)); } catch (e) {} $("edOut").value = JSON.stringify(GEO); }
+async function editZone(m){
+  cur = m; $("edName").textContent = m.city + " — " + m.area; $("edMsg").textContent = "جاري التحميل…";
+  OV.forEach((e, z) => { if (z !== m.zid) hideZone({zid: z}); });
+  const e = await showZone(m); if (!GEO[m.zid]) GEO[m.zid] = {c: e.g.c.slice(), r: e.g.r, s: e.g.s, s0: e.O.mpp || e.g.s};
+  const g = GEO[m.zid]; $("edR").value = g.r; $("edS").value = Math.round(100 * g.s / (g.s0 || g.s)); $("edO").value = 90; e.layer.setOpacity(.9);
+  if (handle) handle.remove();
+  handle = L.marker(g.c, {draggable: true, icon: L.divIcon({className: "", iconSize: [26, 26], iconAnchor: [13, 13], html: '<div style="width:26px;height:26px;border-radius:50%;background:#C9A44C;border:3px solid #fff;box-shadow:0 2px 8px #0008;cursor:move"></div>'})}).addTo(map);
+  handle.on("drag", () => { const p = handle.getLatLng(); g.c = [+p.lat.toFixed(7), +p.lng.toFixed(7)]; apply(); });
+  map.setView(g.c, 16); apply(); $("edMsg").textContent = (e.O.mpp ? "المقاس محسوب من مساحات القطع. " : "") + "حرّك النقطة الدهبي، ولفّ وكبّر لحد ما الطرق تنطبق.";
+}
+function apply(){ if (!cur) return; const e = OV.get(cur.zid), g = GEO[cur.zid]; if (!e || !e.O) return;
+  g.r = +$("edR").value; g.s = (g.s0 || g.s) * $("edS").value / 100; $("edRv").textContent = g.r + "°"; $("edSv").textContent = $("edS").value + "%";
+  e.layer.setCorners(...corners(g, e.O)); e.layer.setOpacity($("edO").value / 100); saveGeo(); }
+if (EDIT){
+  const p = document.createElement("div"); p.className = "ed";
+  p.innerHTML = `<b id="edName">اختار منطقة من القايمة</b><small id="edMsg"></small>
+    <label>لف <span id="edRv"></span><input id="edR" type="range" min="-180" max="180" step="0.5" value="0"></label>
+    <label>المقاس <span id="edSv"></span><input id="edS" type="range" min="40" max="250" step="1" value="100"></label>
+    <label>الشفافية<input id="edO" type="range" min="15" max="100" value="90"></label>
+    <div class="row2"><button type="button" id="edDone">✓ تمام كده</button><button type="button" id="edCopy">نسخ البيانات</button></div>
+    <textarea id="edOut" readonly></textarea>`;
+  document.body.appendChild(p);
+  ["edR", "edS", "edO"].forEach(id => $(id).addEventListener("input", apply));
+  $("edDone").onclick = () => { if (!cur) return; GEO[cur.zid].ok = 1; saveGeo(); renderList(); $("edMsg").textContent = "اتحفظت ✓ — اختار اللي بعدها"; };
+  $("edCopy").onclick = () => { $("edOut").select(); try { navigator.clipboard.writeText($("edOut").value); } catch (e) {} $("edMsg").textContent = "اتنسخت — ابعتها لي"; };
+  saveGeo();
+}
 
 (async () => {
   MAPS = await AGMaps.load(); draw();
