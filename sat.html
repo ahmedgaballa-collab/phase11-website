@@ -123,7 +123,8 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const fmt = n => n == null ? "—" : Math.round(n).toLocaleString("en-US");
 const col = z => !z ? "#7D889C" : !z.available ? "#A23B3B" : z.available / Math.max(1, z.total_plots) < .2 ? "#C9A44C" : "#1F8A4C";
 
-const map = L.map("map", {zoomControl: true, attributionControl: true}).setView([29.6, 31.2], 6);
+const map = L.map("map", {zoomControl: false, attributionControl: true}).setView([29.6, 31.2], 6);
+L.control.zoom({position: "topright"}).addTo(map);
 L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
   maxZoom: 19, maxNativeZoom: 18, attribution: "Imagery © Esri, Maxar, Earthstar Geographics"}).addTo(map);
 L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {maxZoom: 19, maxNativeZoom: 18, opacity: .9}).addTo(map);
