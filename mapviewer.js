@@ -49,6 +49,7 @@
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
+    ".agmv [hidden]{display:none !important}" +
     "@media(max-width:560px){.agmv .agmv-txt{display:none}.agmv button,.agmv a.agmv-b{padding:0 11px}}";
   function injectCss() {
     if (document.getElementById("agmv-css")) return;
@@ -56,7 +57,7 @@
   }
 
   /* ---------- viewer ---------- */
-  var root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
+  var locA, root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
   var natW = 0, natH = 0, list = [], pos = 0, s = 1, tx = 0, ty = 0, minS = 1, pointers = {}, pinch = null, drag = null, lastTap = 0, pushed = false;
 
   function build() {
@@ -69,13 +70,13 @@
       '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><canvas class="agmv-lbl"></canvas><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
       '<div class="agmv-bot"><button type="button" data-a="in" aria-label="تكبير">＋</button><button type="button" data-a="out" aria-label="تصغير">－</button>' +
       '<span class="agmv-st" hidden><i></i><span></span></span><button type="button" data-a="res" hidden>إخفاء المحجوز</button><button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
-      '<a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
+      '<a class="agmv-b agmv-loc" target="_blank" rel="noopener" hidden><span>📍</span><span class="agmv-txt">اللوكيشن</span></a><a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
       '<a class="agmv-b agmv-wa" target="_blank" rel="noopener"><span>واتساب</span><span class="agmv-txt">— اسأل عن المنطقة دي</span></a></div>';
     document.body.appendChild(root);
     stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); lbl = stage.querySelector(".agmv-lbl"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
     titleB = root.querySelector(".agmv-t b"); titleS = root.querySelector(".agmv-t small");
     loadEl = root.querySelector(".agmv-load"); hintEl = root.querySelector(".agmv-hint");
-    dlA = root.querySelector('[data-a="dl"]'); waA = root.querySelector(".agmv-wa");
+    dlA = root.querySelector('[data-a="dl"]'); locA = root.querySelector(".agmv-loc"); waA = root.querySelector(".agmv-wa");
     prevB = root.querySelector('[data-a="prev"]'); nextB = root.querySelector('[data-a="next"]');
     root.addEventListener("click", function (e) {
       var b = e.target.closest("[data-a]"); if (!b) return;
@@ -242,10 +243,15 @@
       A.reg[id] = px;
     });
     // pass 2: unclaimed plot-coloured pixels next to a plot's region join that plot (corners cut off by the nearest-centre rule)
-    P.forEach(function (p, id) { var px = A.reg[id]; if (!px) return; var st = px.slice(), lim = px.length * 2 + 2000;
+    // only corners: stay inside this region's own bounding box (+3px), so colour never runs into a neighbouring plot
+    P.forEach(function (p, id) { var px = A.reg[id]; if (!px || !px.length) return;
+      var bx0 = W, bx1 = 0, by0 = H, by1 = 0; px.forEach(function (q) { var x = q % W, y = (q / W) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; });
+      bx0 -= 3; bx1 += 3; by0 -= 3; by1 += 3;
+      var st = px.slice(), lim = Math.round(px.length * 1.25) + 50;
       while (st.length && px.length < lim) { var q = st.pop(), qx = q % W;
         for (var k = 0; k < 4; k++) { var n = k === 0 ? q - 1 : k === 1 ? q + 1 : k === 2 ? q - W : q + W;
           if ((k === 0 && qx === 0) || (k === 1 && qx === W - 1) || n < 0 || n >= N || own[n] !== -1 || !plotCol(n * 4)) continue;
+          var nx = n % W, ny = (n / W) | 0; if (nx < bx0 || nx > bx1 || ny < by0 || ny > by1) continue;
           own[n] = id; px.push(n); st.push(n); } } });
     // label = holes (text) inside each region: pixels enclosed by the same plot on all 4 sides
     P.forEach(function (p, id) { var px = A.reg[id]; if (!px || !px.length) return;
@@ -293,10 +299,12 @@
 
   var LBL = [], mctx = document.createElement("canvas").getContext("2d");   // labels currently drawn crisp on the overlay: {x, y, a, f, t:[area, no, dp], b: booked}
   function fmt(n) { n = Number(n); if (!isFinite(n)) return ""; return n.toLocaleString("en-US", { maximumFractionDigits: 2 }); }
-  function paintMap(it, im, st) {
-    var A = analyze(it, im), W = A.W, H = A.H; svg.width = W; svg.height = H; LBL = [];
-    var ctx = svg.getContext("2d"); ctx.clearRect(0, 0, W, H);
-    if (!A.Y) return 0;
+  function paintMap(it, im, st, cv) {
+    var own = !cv; cv = cv || svg;
+    var A = analyze(it, im), W = A.W, H = A.H; cv.width = W; cv.height = H; var labs = [];
+    var ctx = cv.getContext("2d"); ctx.clearRect(0, 0, W, H);
+    if (own) LBL = labs;
+    if (!A.Y) return own ? 0 : { n: 0, labs: labs, A: A };
     var out = ctx.createImageData(W, H), od = out.data, Y = A.Y, n = 0;
     function put(q, c) { var j = q * 4; od[j] = c[0]; od[j + 1] = c[1]; od[j + 2] = c[2]; od[j + 3] = 255; }
     var RED = [200, 40, 44], WH = [255, 255, 255];
@@ -316,12 +324,54 @@
         mctx.font = "bold 78px Helvetica, Arial, sans-serif"; var wmax = Math.max(mctx.measureText(tt[0]).width, mctx.measureText(tt[2]).width) / 100;
         mctx.font = "bold 100px Helvetica, Arial, sans-serif"; wmax = Math.max(wmax, mctx.measureText(tt[1]).width / 100);
         if (wmax > 0 && ff * wmax > L.w * 1.08) ff = L.w * 1.08 / wmax;
-        LBL.push({ x: L.x, y: L.y, a: L.a, f: ff, b: b, t: tt });
+        labs.push({ x: L.x, y: L.y, a: L.a, f: ff, b: b, t: tt });
       } else if (b) L.holes.forEach(function (q) { put(q, WH); });
     });
     var o = document.createElement("canvas"); o.width = W; o.height = H; o.getContext("2d").putImageData(out, 0, 0); ctx.drawImage(o, 0, 0);
+    if (!own) return { n: n, labs: labs, A: A };
     drawLabels();
     return n;
+  }
+  function textBlock(c, L, f) {
+    c.save(); c.translate(L.x, L.y); if (L.a) c.rotate(L.a); c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillStyle = L.b ? "#fff" : "#16325C"; c.font = "bold " + (f * .78).toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[0], 0, -f * .95);
+    c.fillStyle = L.b ? "#fff" : "#C8102E"; c.font = "bold " + f.toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[1], 0, 0);
+    c.fillStyle = L.b ? "#fff" : "#16325C"; c.font = "bold " + (f * .78).toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[2], 0, f * .95);
+    c.restore();
+  }
+  /* live map for the satellite page: the zone (cropped around its plots) with booked plots red and crisp labels,
+     plus its scale in metres per image pixel (from the plots' real areas vs their size on the image) */
+  function overlay(i, K, full) {
+    return load().then(function (all) {
+      var it = all[i]; K = K || 2;
+      return Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
+        var cv = document.createElement("canvas"), R = paintMap(it, v[1], v[0], cv), A = R.A, r = Math.max(8, it.r || 14);
+        var xs = it.plots.map(function (p) { return p[2]; }), ys = it.plots.map(function (p) { return p[3]; });
+        var bx0 = Math.min.apply(null, xs), bx1 = Math.max.apply(null, xs), by0 = Math.min.apply(null, ys), by1 = Math.max.apply(null, ys);
+        var m = Math.max(r * 6, (bx1 - bx0 + by1 - by0) * .08);
+        var x0 = Math.max(0, Math.round(bx0 - m)), y0 = Math.max(0, Math.round(by0 - m)), x1 = Math.min(it.w, Math.round(bx1 + m)), y1 = Math.min(it.h, Math.round(by1 + m));
+        if (full) { x0 = 0; y0 = 0; x1 = it.w; y1 = it.h; }
+        var o = document.createElement("canvas"); o.width = (x1 - x0) * K; o.height = (y1 - y0) * K; var c = o.getContext("2d");
+        // keep only the zone itself: clip to the outline (convex hull) of its plots, pushed out a little
+        var P = it.plots.map(function (p) { return [p[2], p[3]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+        var cr = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }, lo = [], up = [];
+        P.forEach(function (p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); });
+        P.slice().reverse().forEach(function (p) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); });
+        var hull = lo.slice(0, -1).concat(up.slice(0, -1)), hx = 0, hy = 0; hull.forEach(function (p) { hx += p[0]; hy += p[1]; }); hx /= hull.length || 1; hy /= hull.length || 1;
+        var pad = Math.max(r * 4.5, 60);
+        c.imageSmoothingQuality = "high"; c.drawImage(v[1], x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height); c.drawImage(cv, x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height);
+        c.setTransform(K, 0, 0, K, -x0 * K, -y0 * K); R.labs.forEach(function (L) { textBlock(c, L, L.f); }); c.setTransform(1, 0, 0, 1, 0, 0);
+        // mask = outline of the plots grown by `pad` (fill + thick round stroke), so even a row of 2-3 plots keeps its surroundings
+        var mk = document.createElement("canvas"); mk.width = o.width; mk.height = o.height; var mc = mk.getContext("2d");
+        mc.setTransform(K, 0, 0, K, -x0 * K, -y0 * K); mc.beginPath();
+        (hull.length ? hull : P).forEach(function (p, k) { k ? mc.lineTo(p[0], p[1]) : mc.moveTo(p[0], p[1]); }); mc.closePath();
+        mc.fillStyle = mc.strokeStyle = "#000"; mc.lineJoin = mc.lineCap = "round"; mc.lineWidth = pad * 2; mc.fill(); mc.stroke();
+        if (!full) { c.globalCompositeOperation = "destination-in"; c.drawImage(mk, 0, 0); c.globalCompositeOperation = "source-over"; }
+        var ks = []; it.plots.forEach(function (p, id) { var inf = v[0].info(p), px = A.reg[id]; if (inf && inf.a > 0 && px && px.length > 30) ks.push(Math.sqrt(inf.a / px.length)); });
+        ks.sort(function (a, b) { return a - b; });
+        return { canvas: o, crop: [x0, y0, x1, y1], mpp: ks.length ? ks[ks.length >> 1] * .93 : null, booked: R.n, total: it.plots.length, it: it };
+      });
+    });
   }
   // crisp labels: redrawn in screen pixels on every pan/zoom, so they stay sharp at any zoom
   var lbl = null;
@@ -358,6 +408,7 @@
     var it = list[pos];
     titleB.textContent = it.area; titleS.textContent = it.city + (list.length > 1 ? "  ·  " + (pos + 1) + " من " + list.length : "");
     prevB.style.visibility = nextB.style.visibility = list.length > 1 ? "visible" : "hidden";
+    if (it.loc) { locA.hidden = false; locA.href = "https://www.google.com/maps?q=" + it.loc[0] + "," + it.loc[1]; } else locA.hidden = true;
     dlA.href = it.file; dlA.setAttribute("download", (it.city + " - " + it.area).replace(/[\\/:*?"<>|]/g, "") + ".webp");
     waA.href = "https://wa.me/" + WA + "?text=" + encodeURIComponent("مساء الخير، عايز أستفسر عن قطع " + it.area + " في " + it.city + " (المرحلة 11)");
     loadEl.style.display = "block"; hintEl.style.opacity = 1;
@@ -387,5 +438,5 @@
   function hide() { if (root) root.style.display = "none"; document.documentElement.style.overflow = ""; }
   function close() { if (pushed) { history.back(); } else hide(); }
 
-  window.AGMaps = { load: load, find: find, open: open, norm: norm };
+  window.AGMaps = { load: load, find: find, open: open, norm: norm, overlay: overlay };
 })();
