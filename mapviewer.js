@@ -49,6 +49,7 @@
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
+    ".agmv [hidden]{display:none !important}" +
     "@media(max-width:560px){.agmv .agmv-txt{display:none}.agmv button,.agmv a.agmv-b{padding:0 11px}}";
   function injectCss() {
     if (document.getElementById("agmv-css")) return;
@@ -56,7 +57,7 @@
   }
 
   /* ---------- viewer ---------- */
-  var root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
+  var locA, root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
   var natW = 0, natH = 0, list = [], pos = 0, s = 1, tx = 0, ty = 0, minS = 1, pointers = {}, pinch = null, drag = null, lastTap = 0, pushed = false;
 
   function build() {
@@ -69,13 +70,13 @@
       '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><canvas class="agmv-lbl"></canvas><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
       '<div class="agmv-bot"><button type="button" data-a="in" aria-label="تكبير">＋</button><button type="button" data-a="out" aria-label="تصغير">－</button>' +
       '<span class="agmv-st" hidden><i></i><span></span></span><button type="button" data-a="res" hidden>إخفاء المحجوز</button><button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
-      '<a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
+      '<a class="agmv-b agmv-loc" target="_blank" rel="noopener" hidden><span>📍</span><span class="agmv-txt">اللوكيشن</span></a><a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
       '<a class="agmv-b agmv-wa" target="_blank" rel="noopener"><span>واتساب</span><span class="agmv-txt">— اسأل عن المنطقة دي</span></a></div>';
     document.body.appendChild(root);
     stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); lbl = stage.querySelector(".agmv-lbl"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
     titleB = root.querySelector(".agmv-t b"); titleS = root.querySelector(".agmv-t small");
     loadEl = root.querySelector(".agmv-load"); hintEl = root.querySelector(".agmv-hint");
-    dlA = root.querySelector('[data-a="dl"]'); waA = root.querySelector(".agmv-wa");
+    dlA = root.querySelector('[data-a="dl"]'); locA = root.querySelector(".agmv-loc"); waA = root.querySelector(".agmv-wa");
     prevB = root.querySelector('[data-a="prev"]'); nextB = root.querySelector('[data-a="next"]');
     root.addEventListener("click", function (e) {
       var b = e.target.closest("[data-a]"); if (!b) return;
@@ -358,6 +359,7 @@
     var it = list[pos];
     titleB.textContent = it.area; titleS.textContent = it.city + (list.length > 1 ? "  ·  " + (pos + 1) + " من " + list.length : "");
     prevB.style.visibility = nextB.style.visibility = list.length > 1 ? "visible" : "hidden";
+    if (it.loc) { locA.hidden = false; locA.href = "https://www.google.com/maps?q=" + it.loc[0] + "," + it.loc[1]; } else locA.hidden = true;
     dlA.href = it.file; dlA.setAttribute("download", (it.city + " - " + it.area).replace(/[\\/:*?"<>|]/g, "") + ".webp");
     waA.href = "https://wa.me/" + WA + "?text=" + encodeURIComponent("مساء الخير، عايز أستفسر عن قطع " + it.area + " في " + it.city + " (المرحلة 11)");
     loadEl.style.display = "block"; hintEl.style.opacity = 1;
