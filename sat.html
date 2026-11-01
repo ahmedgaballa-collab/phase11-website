@@ -97,8 +97,13 @@ body{display:flex;flex-direction:column}
 body.full .topbar{display:none}
 .side{top:132px}
 @media (max-width:720px){.fbar .fb span{display:none}.side{top:auto}}
+/* calibration split */
+body.cal #map{margin-inline-end:50%}
+#imgmap{position:fixed;top:120px;bottom:0;left:0;width:50%;z-index:400;background:#fff;border-right:3px solid var(--gold)}
+body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250px;max-height:38%}
+@media (max-width:720px){body.cal #map{margin:0;height:50%}#imgmap{top:auto;bottom:0;height:45%;width:100%;border-right:0;border-top:3px solid var(--gold)}}
 /* editor */
-.ed{position:absolute;z-index:600;bottom:14px;left:12px;width:min(360px,calc(100% - 24px));background:var(--surface);border:2px solid var(--gold);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow);display:grid;gap:6px;font-size:13px}
+.ed{position:fixed;z-index:600;bottom:14px;right:12px;width:min(360px,calc(100% - 24px));background:var(--surface);border:2px solid var(--gold);border-radius:14px;padding:10px 12px;box-shadow:var(--shadow);display:grid;gap:6px;font-size:13px}
 .ed small{color:var(--ink-3)}
 .ed label{display:flex;align-items:center;gap:8px}.ed label input{flex:1}.ed label span{min-width:44px;color:var(--gold-ink);font-weight:700}
 .ed .row2{display:flex;gap:8px}.ed .row2 button{flex:1;border:0;border-radius:10px;padding:8px;font:inherit;font-weight:800;cursor:pointer;background:var(--ink);color:var(--surface)}
@@ -242,33 +247,60 @@ map.on("popupopen", e => { const el = e.popup.getElement(), b = el.querySelector
 
 /* ---------- alignment editor (?edit): place each zone map on the ground, then send the numbers ---------- */
 let cur = null, handle = null;
-function saveGeo(){ try { localStorage.setItem("ag-geo", JSON.stringify(GEO)); } catch (e) {} $("edOut").value = JSON.stringify(GEO); }
-async function editZone(m){
-  cur = m; $("edName").textContent = m.city + " — " + m.area; $("edMsg").textContent = "جاري التحميل…";
-  OV.forEach((e, z) => { if (z !== m.zid) hideZone({zid: z}); });
-  const e = await showZone(m); if (!GEO[m.zid]) GEO[m.zid] = {c: e.g.c.slice(), r: e.g.r, s: e.g.s, s0: e.O.mpp || e.g.s};
-  const g = GEO[m.zid]; $("edR").value = g.r; $("edS").value = Math.round(100 * g.s / (g.s0 || g.s)); $("edO").value = 90; e.layer.setOpacity(.9);
-  if (handle) handle.remove();
-  handle = L.marker(g.c, {draggable: true, icon: L.divIcon({className: "", iconSize: [26, 26], iconAnchor: [13, 13], html: '<div style="width:26px;height:26px;border-radius:50%;background:#C9A44C;border:3px solid #fff;box-shadow:0 2px 8px #0008;cursor:move"></div>'})}).addTo(map);
-  handle.on("drag", () => { const p = handle.getLatLng(); g.c = [+p.lat.toFixed(7), +p.lng.toFixed(7)]; apply(); });
-  map.setView(g.c, 16); apply(); $("edMsg").textContent = (e.O.mpp ? "المقاس محسوب من مساحات القطع. " : "") + "حرّك النقطة الدهبي، ولفّ وكبّر لحد ما الطرق تنطبق.";
+var saveGeo = function(){ try { localStorage.setItem("ag-geo", JSON.stringify(GEO)); } catch (e) {} if ($("edOut")) $("edOut").value = JSON.stringify(Object.fromEntries(Object.entries(GEO).filter(([k, g]) => g.ok).map(([k, g]) => [k, [g.c[0], g.c[1], g.r, g.s]]))); };
+/* two-point calibration: tap a spot on the zone map, then the same spot on the satellite — twice */
+let IM = null, IML = null, PTS = [], pmk = [];
+function calSet(msg){ $("edMsg").innerHTML = msg; }
+function calStep(){ const n = PTS.length, side = n % 2 ? "الصورة على <b>القمر الصناعي</b>" : "<b>خريطة القطع</b> (شمال)";
+  if (n >= 4) return calSet("✓ اتركبت — شوف الشفافية تحت، ولو تمام دوس <b>حفظ</b>");
+  calSet(`نقطة ${(n >> 1) + 1} من 2: دوس على ركن واضح في ${side}`); }
+function calPin(mapObj, ll, k){ return L.marker(ll, {interactive: false, icon: L.divIcon({className: "", iconSize: [24, 24], iconAnchor: [12, 12],
+  html: `<div style="width:24px;height:24px;border-radius:50%;background:${k < 2 ? "#E8432E" : "#2E7DE8"};color:#fff;border:2px solid #fff;font:800 12px Tajawal;display:grid;place-items:center;box-shadow:0 2px 6px #0009">${k < 2 ? 1 : 2}</div>`})}).addTo(mapObj); }
+function calSolve(){
+  const m = cur, e = OV.get(m.zid); if (!e || PTS.length < 4) return;
+  const [i1, g1, i2, g2] = PTS, k = Math.cos(g1.lat * Math.PI / 180);
+  const I = p => [p.x - m.w / 2, p.y - m.h / 2], G = p => [(p.lng - g1.lng) * 111320 * k, -(p.lat - g1.lat) * 111320];
+  const a1 = I(i1), a2 = I(i2), b1 = G(g1), b2 = G(g2);
+  const dx = a2[0] - a1[0], dy = a2[1] - a1[1], ex = b2[0] - b1[0], ey = b2[1] - b1[1], den = dx * dx + dy * dy;
+  if (den < 100) return calSet("النقطتين قريبين أوي من بعض — اختار ركنين بعاد عن بعض");
+  const ar = (ex * dx + ey * dy) / den, ai = (ey * dx - ex * dy) / den; // complex ratio
+  const tx = b1[0] - (ar * a1[0] - ai * a1[1]), ty = b1[1] - (ar * a1[1] + ai * a1[0]); // ground (local m) of image centre
+  GEO[m.zid] = {c: [+(g1.lat - ty / 111320).toFixed(7), +(g1.lng + tx / (111320 * k)).toFixed(7)], r: +(Math.atan2(ai, ar) * 180 / Math.PI).toFixed(2), s: +Math.hypot(ar, ai).toFixed(5)};
+  e.layer.setCorners(...corners(GEO[m.zid], e.O)); e.layer.setOpacity($("edO").value / 100); if (!map.hasLayer(e.layer)) e.layer.addTo(map);
+  saveGeo(); calStep();
 }
-function apply(){ if (!cur) return; const e = OV.get(cur.zid), g = GEO[cur.zid]; if (!e || !e.O) return;
-  g.r = +$("edR").value; g.s = (g.s0 || g.s) * $("edS").value / 100; $("edRv").textContent = g.r + "°"; $("edSv").textContent = $("edS").value + "%";
-  e.layer.setCorners(...corners(g, e.O)); e.layer.setOpacity($("edO").value / 100); saveGeo(); }
+async function editZone(m){
+  cur = m; PTS = []; pmk.forEach(x => x.remove()); pmk = [];
+  $("edName").textContent = m.city + " — " + m.area; calSet("جاري التحميل…");
+  OV.forEach((e, z) => { if (z !== m.zid) hideZone({zid: z}); });
+  const e = await showZone(m); e.layer.setOpacity($("edO").value / 100);
+  if (IML) IML.remove(); const bnds = [[0, 0], [m.h, m.w]];
+  IML = L.imageOverlay(m.file, bnds).addTo(IM); IM.fitBounds(bnds);
+  const g = geoOf(m); map.setView(g ? g.c : m.loc, 16); calStep();
+}
+function apply(){ if (!cur) return; const e = OV.get(cur.zid); if (e && e.layer) e.layer.setOpacity($("edO").value / 100); }
 if (EDIT){
+  document.body.classList.add("cal");
+  const box = document.createElement("div"); box.id = "imgmap"; document.body.appendChild(box);
+  IM = L.map(box, {crs: L.CRS.Simple, minZoom: -4, maxZoom: 3, zoomSnap: .25, attributionControl: false});
+  IM.setView([0, 0], -2); setTimeout(() => { map.invalidateSize(); IM.invalidateSize(); }, 300);
   const p = document.createElement("div"); p.className = "ed";
-  p.innerHTML = `<b id="edName">اختار منطقة من القايمة</b><small id="edMsg"></small>
-    <label>لف <span id="edRv"></span><input id="edR" type="range" min="-180" max="180" step="0.5" value="0"></label>
-    <label>المقاس <span id="edSv"></span><input id="edS" type="range" min="40" max="250" step="1" value="100"></label>
-    <label>الشفافية<input id="edO" type="range" min="15" max="100" value="90"></label>
-    <div class="row2"><button type="button" id="edDone">✓ تمام كده</button><button type="button" id="edCopy">نسخ البيانات</button></div>
-    <textarea id="edOut" readonly></textarea>`;
+  p.innerHTML = `<b id="edName">اختار منطقة من القايمة</b><small id="edMsg">لكل منطقة: دوس على ركن في خريطة القطع، وبعدين على نفس الركن على القمر الصناعي. اعمل كده مرتين.</small>
+    <label>الشفافية<input id="edO" type="range" min="15" max="100" value="65"></label>
+    <div class="row2"><button type="button" id="edUndo">↩ تراجع</button><button type="button" id="edDone">✓ حفظ</button><button type="button" id="edCopy">نسخ البيانات</button></div>
+    <small id="edCount"></small><textarea id="edOut" readonly></textarea>`;
   document.body.appendChild(p);
-  ["edR", "edS", "edO"].forEach(id => $(id).addEventListener("input", apply));
-  $("edDone").onclick = () => { if (!cur) return; GEO[cur.zid].ok = 1; saveGeo(); renderList(); $("edMsg").textContent = "اتحفظت ✓ — اختار اللي بعدها"; };
-  $("edCopy").onclick = () => { $("edOut").select(); try { navigator.clipboard.writeText($("edOut").value); } catch (e) {} $("edMsg").textContent = "اتنسخت — ابعتها لي"; };
-  saveGeo();
+  $("edO").addEventListener("input", apply);
+  IM.on("click", ev => { if (!cur || PTS.length % 2 === 1 || PTS.length >= 4) return;
+    const pt = {x: ev.latlng.lng, y: cur.h - ev.latlng.lat}; PTS.push(pt); pmk.push(calPin(IM, ev.latlng, PTS.length - 1)); calStep(); });
+  map.on("click", ev => { if (!cur || PTS.length % 2 === 0) return;
+    PTS.push(ev.latlng); pmk.push(calPin(map, ev.latlng, PTS.length - 1)); if (PTS.length === 4) calSolve(); else calStep(); });
+  $("edUndo").onclick = () => { if (!PTS.length) return; PTS.pop(); const x = pmk.pop(); x && x.remove(); calStep(); };
+  $("edDone").onclick = () => { if (!cur || !GEO[cur.zid] || PTS.length < 4) return calSet("لسه محتاج النقطتين الأول"); GEO[cur.zid].ok = 1; saveGeo(); renderList();
+    calSet("اتحفظت ✓ — اختار المنطقة اللي بعدها من القايمة"); };
+  $("edCopy").onclick = () => { $("edOut").select(); try { navigator.clipboard.writeText($("edOut").value); } catch (e) {} calSet("اتنسخت — ابعتهالي"); };
+  const cnt = () => { $("edCount").textContent = "اتظبط: " + Object.values(GEO).filter(g => g.ok).length + " منطقة"; };
+  const sg = saveGeo; saveGeo = function(){ sg(); cnt(); }; saveGeo();
 }
 
 $("fCity").addEventListener("change", e => { F.city = e.target.value; draw.done = 0; draw(); const ms = MAPS.filter(m => m.loc && passF(m)); if (ms.length) map.fitBounds(ms.map(m => m.loc), {padding: [60, 60], maxZoom: 15}); });
