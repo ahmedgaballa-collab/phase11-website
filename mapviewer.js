@@ -243,10 +243,15 @@
       A.reg[id] = px;
     });
     // pass 2: unclaimed plot-coloured pixels next to a plot's region join that plot (corners cut off by the nearest-centre rule)
-    P.forEach(function (p, id) { var px = A.reg[id]; if (!px) return; var st = px.slice(), lim = px.length * 2 + 2000;
+    // only corners: stay inside this region's own bounding box (+3px), so colour never runs into a neighbouring plot
+    P.forEach(function (p, id) { var px = A.reg[id]; if (!px || !px.length) return;
+      var bx0 = W, bx1 = 0, by0 = H, by1 = 0; px.forEach(function (q) { var x = q % W, y = (q / W) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; });
+      bx0 -= 3; bx1 += 3; by0 -= 3; by1 += 3;
+      var st = px.slice(), lim = Math.round(px.length * 1.25) + 50;
       while (st.length && px.length < lim) { var q = st.pop(), qx = q % W;
         for (var k = 0; k < 4; k++) { var n = k === 0 ? q - 1 : k === 1 ? q + 1 : k === 2 ? q - W : q + W;
           if ((k === 0 && qx === 0) || (k === 1 && qx === W - 1) || n < 0 || n >= N || own[n] !== -1 || !plotCol(n * 4)) continue;
+          var nx = n % W, ny = (n / W) | 0; if (nx < bx0 || nx > bx1 || ny < by0 || ny > by1) continue;
           own[n] = id; px.push(n); st.push(n); } } });
     // label = holes (text) inside each region: pixels enclosed by the same plot on all 4 sides
     P.forEach(function (p, id) { var px = A.reg[id]; if (!px || !px.length) return;
