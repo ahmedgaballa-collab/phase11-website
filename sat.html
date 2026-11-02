@@ -165,7 +165,8 @@ try { if (EDIT) GEO = JSON.parse(localStorage.getItem("ag-geo") || "{}"); } catc
 const AUTO = {}; // zid -> automatic placement: NUCA location pin, scale from the plots' real areas, north up
 const F = {city: "", st: ""};
 const passF = m => { if (F.city && m.city !== F.city) return false; const z = STATS.get(String(m.zid)); if (F.st === "av") return !z || z.available > 0; if (F.st === "done") return z && !z.available; return true; };
-const geoOf = m => GEO[m.zid] || m.geo || (m.loc ? (AUTO[m.zid] || {c: m.loc, r: 0, s: 0, auto: 1}) : null);
+// only zones Ahmed placed by hand are drawn on the ground; the editor still needs a starting guess for the rest
+const geoOf = m => GEO[m.zid] || m.geo || (EDIT && m.loc ? (AUTO[m.zid] || {c: m.loc, r: 0, s: 0, auto: 1}) : null);
 
 /* ---------- the live zone map placed on the ground: an image (canvas) stretched between 3 corner points ---------- */
 const Placed = L.Layer.extend({
