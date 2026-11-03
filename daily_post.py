@@ -120,10 +120,17 @@ def _supa_all(path, params):
 
 def _alloc_start_utc(day):
     """11:00 Cairo on `day`, as an ISO UTC string."""
-    from datetime import datetime, timezone
-    from zoneinfo import ZoneInfo
-    t = datetime(day.year, day.month, day.day, 11, tzinfo=ZoneInfo("Africa/Cairo"))
-    return t.astimezone(timezone.utc).isoformat()
+    from datetime import datetime, timedelta, timezone
+    try:
+        from zoneinfo import ZoneInfo
+        t = datetime(day.year, day.month, day.day, 11, tzinfo=ZoneInfo("Africa/Cairo"))
+        return t.astimezone(timezone.utc).isoformat()
+    except Exception:                      # Windows without tzdata — same fallback as scraper.py
+        import scraper
+        noon_utc = datetime(day.year, day.month, day.day, 9, tzinfo=timezone.utc)
+        offset = 3 if scraper._egypt_dst(noon_utc) else 2
+        t = datetime(day.year, day.month, day.day, 11) - timedelta(hours=offset)
+        return t.replace(tzinfo=timezone.utc).isoformat()
 
 
 def _prev_alloc(scraper, day):
@@ -151,6 +158,9 @@ def _city_counts_between(start_iso, end_iso):
     return counts
 
 
+STATS_ERROR = None
+
+
 def gather_stats(scraper, day):
     """Per-city numbers the post needs. Returns None if Supabase can't be read."""
     try:
@@ -175,7 +185,9 @@ def gather_stats(scraper, day):
                            "avg_down": sum(dl) / len(dl) if dl else None})
         return [c for c in cities if c["total"]]
     except Exception as e:
-        print(f"[daily] extra stats unavailable ({e}) — sending the short post")
+        global STATS_ERROR
+        STATS_ERROR = f"{type(e).__name__}: {e}"
+        print(f"[daily] extra stats unavailable ({STATS_ERROR}) — sending the short post")
         return None
 
 
@@ -268,6 +280,8 @@ def send(force=False):
             r = tg("sendPhoto", chat_id=owner, caption="📸 صورة بوست النهارده — احفظها وانزل بيها مع النص اللي تحت 👇",
                    files={"photo": ("daily.png", f, "image/png")})
         r2 = tg("sendMessage", chat_id=owner, text=text, disable_web_page_preview="true")
+        if STATS_ERROR:
+            tg("sendMessage", chat_id=owner, text=f"ℹ️ سطور ⚠️💡📍 مظهرتش النهارده: {STATS_ERROR[:300]}")
         tg("sendMessage", chat_id=owner, text="💬 أول كومنت 👇")
         tg("sendMessage", chat_id=owner, text=comment_text(), disable_web_page_preview="true")
         try:
