@@ -461,7 +461,7 @@ wireSeg("segPeriod", "period"); wireSeg("segLevel", "level");
    NUCA releases plots at 11:00 Cairo, Sunday–Thursday, except official holidays.
    An allocation day runs from its 11:00 until the next allocation day's 11:00, so
    late-night / weekend / holiday bookings count for the last allocation day. */
-const ALLOC_HOUR = 11, OFF_WEEKDAYS = [5, 6]; // Fri, Sat (JS: Sun=0)
+const ALLOC_HOUR = 10, OFF_WEEKDAYS = [5, 6]; // Fri, Sat (JS: Sun=0)
 let HOLIDAYS = new Set(["2026-10-08"]);
 const cairoDate = (ms) => new Intl.DateTimeFormat("en-CA", {timeZone:"Africa/Cairo"}).format(new Date(ms));
 function cairoOffsetMin(dayStr){
