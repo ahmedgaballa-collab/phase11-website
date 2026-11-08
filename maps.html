@@ -407,7 +407,7 @@ function setBudget(v, from){
   S.shown = 30; syncUrl();
   if (S.city) renderCity(); else renderCities();
 }
-$("presets").innerHTML = [15000, 20000, 25000, 30000, 40000, 60000].map(v => `<button type="button" data-b="${v}">${v / 1000} ألف</button>`).join("");
+$("presets").innerHTML = [15000, 20000, 25000, 30000, 40000, 60000, 80000, 100000].map(v => `<button type="button" data-b="${v}">${v / 1000} ألف</button>`).join("");
 $("presets").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setBudget(b.dataset.b); });
 $("budget").addEventListener("input", e => setBudget(e.target.value, "main"));
 $("budget").addEventListener("blur", e => { if (S.budget) e.target.value = fmt(S.budget); });
@@ -458,5 +458,6 @@ $("themeBtn").addEventListener("click", () => { const n = document.documentEleme
   document.documentElement.setAttribute("data-theme", n); try { localStorage.setItem("ag-theme", n); } catch (e) {} paintThemeBtn(); });
 paintThemeBtn();
 </script>
+<script src="/ag-ui.js?v=1" defer></script>
 </body>
 </html>
