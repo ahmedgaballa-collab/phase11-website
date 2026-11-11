@@ -159,7 +159,7 @@ L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/
   maxZoom: 20, maxNativeZoom: 18, attribution: "Imagery © Esri, Maxar, Earthstar Geographics"}).addTo(map);
 L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {maxZoom: 20, maxNativeZoom: 18, opacity: .9}).addTo(map);
 
-const EDIT = /[?&#]edit/.test(location.search + location.hash);
+const EDIT = /[?&#]edit/.test(location.search + location.hash), ONLYMISS = EDIT && /[?&#]missing/.test(location.search + location.hash);
 let MAPS = [], STATS = new Map(), markers = new Map(), GEO = {};
 try { if (EDIT) GEO = JSON.parse(localStorage.getItem("ag-geo") || "{}"); } catch (e) {}
 const AUTO = {}; // zid -> automatic placement: NUCA location pin, scale from the plots' real areas, north up
@@ -229,7 +229,7 @@ function draw(){
 }
 function renderList(){
   const q = AGMaps.norm($("q").value), by = new Map();
-  MAPS.filter(m => m.loc && passF(m) && (!q || AGMaps.norm(m.city + " " + m.area).includes(q))).forEach(m => { if (!by.has(m.city)) by.set(m.city, []); by.get(m.city).push(m); });
+  MAPS.filter(m => m.loc && passF(m) && (!ONLYMISS || m.noLink) && (!q || AGMaps.norm(m.city + " " + m.area).includes(q))).forEach(m => { if (!by.has(m.city)) by.set(m.city, []); by.get(m.city).push(m); });
   $("list").innerHTML = [...by].map(([c, ms]) => `<div class="city">${esc(c)}</div>` + ms.map(m => { const z = STATS.get(String(m.zid));
     return `<button class="z" type="button" data-go="${m.i}"><i style="background:${col(z)}"></i><span>${m.noLink ? "⚠ " : ""}${esc(m.area)}${geoOf(m) && !m.noLink ? " 🛰" : ""}</span><b>${z ? fmt(z.available) + " متاح" : ""}</b></button>`; }).join("")).join("")
     || `<div class="city" style="color:var(--ink-3)">مفيش نتايج</div>`;
