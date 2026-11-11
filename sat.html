@@ -158,7 +158,7 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
   <div class="list" id="list"></div>
 </aside>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="mapviewer.js?v=13"></script>
+<script src="mapviewer.js?v=14"></script>
 <script>
 const SB = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
@@ -251,14 +251,18 @@ const LB = {
     if (cv.width !== sz.x * dpr || cv.height !== sz.y * dpr){ cv.width = sz.x * dpr; cv.height = sz.y * dpr; cv.style.width = sz.x + "px"; cv.style.height = sz.y + "px"; }
     const c = cv.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); if (!UI.bk || map.getZoom() < 14) return;
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const G = new Map(), CS = 24, boxes = [];
+    const hit = (x0, y0, x1, y1) => { const ks = []; for (let i = Math.floor(x0 / CS); i <= Math.floor(x1 / CS); i++) for (let j = Math.floor(y0 / CS); j <= Math.floor(y1 / CS); j++) { const k = i + "," + j; ks.push(k); const l = G.get(k); if (l) for (const b of l) if (b[0] < x1 && b[2] > x0 && b[1] < y1 && b[3] > y0) return true; }
+      const b = [x0, y0, x1, y1]; ks.forEach(k => { let l = G.get(k); if (!l) G.set(k, l = []); l.push(b); }); return false; };
     GL.forEach(e => { if (!map.hasLayer(e.layer) || !e.labs || !e.labs.length) return; const m = e.layer.m;
       const [a, b, cc] = e.layer.corners().map(p => map.latLngToContainerPoint(p)), ux = (b.x - a.x) / m.w, uy = (b.y - a.y) / m.w, vx = (cc.x - a.x) / m.h, vy = (cc.y - a.y) / m.h, sc = Math.hypot(ux, uy), rot = Math.atan2(uy, ux);
       e.labs.forEach(L => { const f = L.f * sc, x = a.x + L.x * ux + L.y * vx, y = a.y + L.x * uy + L.y * vy; if (x < -60 || y < -60 || x > sz.x + 60 || y > sz.y + 60) return;
         if (f >= 7.5) return AGMaps.textBlock(c, {x, y, a: L.a + rot, b: L.b, t: L.t}, f);
-        // zoomed out: the plot is too small for 3 lines, so show just its number, as big as the plot allows
-        const n = String(L.t[1]), fn = Math.min(13, (L.w || L.f * 3) * sc * 1.05 / (n.length * .6 + .2)); if (fn < 6.5) return;
+        // zoomed out: the plot is too small for 3 lines, so show just its number at a readable size, skipping any that would overlap
+        const n = String(L.t[1]), fn = Math.max(9, Math.min(13, (L.w || L.f * 3) * sc * 1.05 / (n.length * .6 + .2))), hw = n.length * fn * .32 + 2, hh = fn * .6 + 1;
+        if (hit(x - hw, y - hh, x + hw, y + hh)) return;
         c.save(); c.translate(x, y); c.rotate(L.a + rot); c.textAlign = "center"; c.textBaseline = "middle"; c.font = "bold " + fn.toFixed(1) + "px Helvetica, Arial, sans-serif";
-        c.lineWidth = Math.max(2, fn * .28); c.lineJoin = "round"; c.strokeStyle = L.b ? "rgba(120,0,0,.9)" : "rgba(255,255,255,.95)"; c.strokeText(n, 0, 0);
+        c.lineWidth = Math.max(2.5, fn * .3); c.lineJoin = "round"; c.strokeStyle = L.b ? "rgba(120,0,0,.95)" : "rgba(255,255,255,.95)"; c.strokeText(n, 0, 0);
         c.fillStyle = L.b ? "#fff" : "#C8102E"; c.fillText(n, 0, 0); c.restore(); }); }); }
 };
 function refreshGround(){
