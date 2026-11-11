@@ -265,9 +265,12 @@ const LB = {
         c.lineWidth = Math.max(2.5, fn * .3); c.lineJoin = "round"; c.strokeStyle = L.b ? "rgba(120,0,0,.95)" : "rgba(255,255,255,.95)"; c.strokeText(n, 0, 0);
         c.fillStyle = L.b ? "#fff" : "#C8102E"; c.fillText(n, 0, 0); c.restore(); }); }); }
 };
+// the zone's whole footprint on the ground (all 4 corners), so it stays on screen when you zoom deep into one corner of it
+const ZB = new Map();
+function zoneBounds(m){ let b = ZB.get(m.zid); if (!b){ const [a, bb, c] = corners(geoOf(m), {it: m, crop: [0, 0, m.w, m.h]}), d = L.latLng(bb.lat + c.lat - a.lat, bb.lng + c.lng - a.lng); b = L.latLngBounds([a, bb, c, d]); ZB.set(m.zid, b); } return b; }
 function refreshGround(){
   const show = map.getZoom() >= 14, bb = map.getBounds().pad(.3);
-  MAPS.forEach(m => { const g = m.geo; if (!g || m.zid === "4803") return; if (!passF(m) || !show || !bb.contains(g.c)) groundOff(m); else groundOn(m); });
+  MAPS.forEach(m => { const g = geoOf(m); if (!g || m.zid === "4803") return; if (!passF(m) || !show || !bb.intersects(zoneBounds(m))) groundOff(m); else groundOn(m); });
   LB.draw();
 }
 setInterval(() => { const cities = new Set(); GL.forEach((e, z) => { if (map.hasLayer(e.layer)) cities.add(e.layer.m.city); }); cities.forEach(c => AGMaps.refresh(c)); GL.forEach(e => { if (map.hasLayer(e.layer)) paintZone(e.layer.m); }); }, 120000);
