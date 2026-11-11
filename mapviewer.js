@@ -320,7 +320,7 @@
       mctx.font = "bold 78px Helvetica, Arial, sans-serif"; var wm = Math.max(mctx.measureText(tt[0]).width, mctx.measureText(tt[2]).width) / 100;
       mctx.font = "bold 100px Helvetica, Arial, sans-serif"; wm = Math.max(wm, mctx.measureText(tt[1]).width / 100);
       if (wm > 0 && ff * wm > L[4] * 1.08) ff = L[4] * 1.08 / wm;
-      labs.push({ x: L[0], y: L[1], a: L[2], f: ff, b: b, t: tt });
+      labs.push({ x: L[0], y: L[1], a: L[2], f: ff, b: b, t: tt, w: L[4] });
     });
     return { n: n, labs: labs };
   }
