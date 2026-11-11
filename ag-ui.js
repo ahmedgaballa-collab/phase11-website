@@ -103,3 +103,14 @@
     });
   };
 })();
+
+/* 4) visitor counts (2026-11-11): Vercel Web Analytics — page views and visitors
+   show up in Vercel > project > Analytics (free up to 50,000 page views a month) */
+(function () {
+  if (window.va || /localhost|127\.0\.0\.1/.test(location.hostname)) return;
+  window.va = function () { (window.vaq = window.vaq || []).push(arguments); };
+  var s = document.createElement("script");
+  s.defer = true;
+  s.src = "/_vercel/insights/script.js";
+  document.head.appendChild(s);
+})();
