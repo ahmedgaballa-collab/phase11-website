@@ -231,7 +231,7 @@ function renderList(){
   const q = AGMaps.norm($("q").value), by = new Map();
   MAPS.filter(m => m.loc && passF(m) && (!q || AGMaps.norm(m.city + " " + m.area).includes(q))).forEach(m => { if (!by.has(m.city)) by.set(m.city, []); by.get(m.city).push(m); });
   $("list").innerHTML = [...by].map(([c, ms]) => `<div class="city">${esc(c)}</div>` + ms.map(m => { const z = STATS.get(String(m.zid));
-    return `<button class="z" type="button" data-go="${m.i}"><i style="background:${col(z)}"></i><span>${esc(m.area)}${geoOf(m) ? " 🛰" : ""}</span><b>${z ? fmt(z.available) + " متاح" : ""}</b></button>`; }).join("")).join("")
+    return `<button class="z" type="button" data-go="${m.i}"><i style="background:${col(z)}"></i><span>${m.noLink ? "⚠ " : ""}${esc(m.area)}${geoOf(m) && !m.noLink ? " 🛰" : ""}</span><b>${z ? fmt(z.available) + " متاح" : ""}</b></button>`; }).join("")).join("")
     || `<div class="city" style="color:var(--ink-3)">مفيش نتايج</div>`;
 }
 function goZone(i){ const m = MAPS[i], g = geoOf(m);
@@ -322,6 +322,8 @@ $("fDl").addEventListener("click", () => { const c = map.getCenter(); let best =
 
 (async () => {
   MAPS = await AGMaps.load();
+  // editor: zones with no NUCA link start at the middle of their city, so they can be placed by hand
+  if (EDIT) MAPS.forEach(m => { if (m.loc) return; const c = MAPS.filter(x => x.city === m.city && x.loc); if (c.length) { m.loc = [c.reduce((a, x) => a + x.loc[0], 0) / c.length, c.reduce((a, x) => a + x.loc[1], 0) / c.length]; m.noLink = 1; } });
   [...new Set(MAPS.filter(m => m.loc).map(m => m.city))].sort((a, b) => a.localeCompare(b, "ar")).forEach(c => { const o = document.createElement("option"); o.value = o.textContent = c; $("fCity").appendChild(o); });
   draw();
   try {
