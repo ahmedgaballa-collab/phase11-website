@@ -239,7 +239,18 @@ const GL = new Map(); // zid -> {layer, labs, n}
 const K = .5; // plot canvas at half the map resolution
 async function paintZone(z){ const e = GL.get(z.zid); if (!e) return;
   const d = await AGMaps.zoneLive(z.i); if (!d.V) return; const cv = e.layer.cv; cv.width = Math.round(z.w * K); cv.height = Math.round(z.h * K);
-  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; LB.draw(); }
+  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; LB.draw();   if (!e.clip){ e.clip = 1; const h = clipHull(d.V, z); if (h) e.layer.el.style.clipPath = "polygon(" + h.map(q => q[0].toFixed(0) + "px " + q[1].toFixed(0) + "px").join(",") + ")"; } }
+// each zone's map sheet also prints its neighbours; overlapping sheets then show two sets of numbers.
+// So each sheet is cut to its own plots (their outline, pushed out to the middle of the surrounding street).
+function clipHull(V, z){ const P = []; V.p.forEach(p => { if (p) for (let i = 0; i < p.length; i += 2) P.push([p[i], p[i + 1]]); }); if (P.length < 3) return null;
+  P.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
+  P.forEach(p => { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); });
+  for (let i = P.length - 1; i >= 0; i--){ const p = P[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  const H = lo.slice(0, -1).concat(up.slice(0, -1)), n = H.length, pad = Math.max(30, (z.r || 14) * 2.2);
+  return H.map((p, i) => { const a = H[(i + n - 1) % n], b = H[(i + 1) % n];
+    const n1 = norm2([p[1] - a[1], a[0] - p[0]]), n2 = norm2([b[1] - p[1], p[0] - b[0]]); let m = norm2([n1[0] + n2[0], n1[1] + n2[1]]); const c = Math.max(.35, m[0] * n1[0] + m[1] * n1[1]);
+    return [p[0] + m[0] * pad / c, p[1] + m[1] * pad / c]; }); }
+const norm2 = v => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
 function groundOn(m){ let e = GL.get(m.zid); if (!e){ e = {layer: new Ground(m), labs: []}; GL.set(m.zid, e); paintZone(m); } if (!map.hasLayer(e.layer)) e.layer.addTo(map); }
 function groundOff(m){ const e = GL.get(m.zid); if (e && map.hasLayer(e.layer)) e.layer.remove(); }
 // crisp labels: redrawn in screen pixels after every move, so the numbers stay sharp at any zoom
