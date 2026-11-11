@@ -232,7 +232,7 @@ const Ground = L.Layer.extend({
   corners(){ const m = this.m; return corners(geoOf(m), {it: m, crop: [0, 0, m.w, m.h]}); },
   _up(){ const map = this._m; if (!map) return; const [a, b, c] = this.corners().map(p => map.latLngToLayerPoint(p)), w = this.m.w, h = this.m.h;
     this.el.style.transform = `matrix(${(b.x - a.x) / w},${(b.y - a.y) / w},${(c.x - a.x) / h},${(c.y - a.y) / h},${a.x},${a.y})`;
-    const hi = map.getZoom() >= 17; if (hi !== this.hi){ this.hi = hi; this.img.src = `maps/t/${hi ? "" : "s/"}${this.m.zid}.webp`; } },
+    const hi = map.getZoom() >= 17; if (hi !== this.hi){ this.hi = hi; this.img.src = `maps/t/${hi ? "" : "s/"}${this.m.zid}.webp?v=2`; } },
   style(){ this.img.style.opacity = UI.only ? 0 : UI.op; this.cv.style.display = UI.bk ? "" : "none"; }
 });
 const GL = new Map(); // zid -> {layer, labs, n}
