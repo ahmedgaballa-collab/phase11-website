@@ -239,7 +239,7 @@ const GL = new Map(); // zid -> {layer, labs, n}
 const K = .5; // plot canvas at half the map resolution
 async function paintZone(z){ const e = GL.get(z.zid); if (!e) return;
   const d = await AGMaps.zoneLive(z.i); if (!d.V) return; const cv = e.layer.cv; cv.width = Math.round(z.w * K); cv.height = Math.round(z.h * K);
-  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; LB.draw();   if (!e.clip){ e.clip = 1; const h = clipHull(d.V, z); if (h) e.layer.el.style.clipPath = "polygon(" + h.map(q => q[0].toFixed(0) + "px " + q[1].toFixed(0) + "px").join(",") + ")"; } }
+  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; const fs = R.labs.map(l => l.f).sort((p, q) => p - q); e.fm = fs.length ? fs[fs.length >> 1] : 0; LB.draw();   if (!e.clip){ e.clip = 1; const h = clipHull(d.V, z); if (h) e.layer.el.style.clipPath = "polygon(" + h.map(q => q[0].toFixed(0) + "px " + q[1].toFixed(0) + "px").join(",") + ")"; } }
 // each zone's map sheet also prints its neighbours; overlapping sheets then show two sets of numbers.
 // So each sheet is cut to its own plots (their outline, pushed out to the middle of the surrounding street).
 function clipHull(V, z){ const P = []; V.p.forEach(p => { if (p) for (let i = 0; i < p.length; i += 2) P.push([p[i], p[i + 1]]); }); if (P.length < 3) return null;
@@ -268,9 +268,11 @@ const LB = {
     GL.forEach(e => { if (!map.hasLayer(e.layer) || !e.labs || !e.labs.length) return; const m = e.layer.m;
       const [a, b, cc] = e.layer.corners().map(p => map.latLngToContainerPoint(p)), ux = (b.x - a.x) / m.w, uy = (b.y - a.y) / m.w, vx = (cc.x - a.x) / m.h, vy = (cc.y - a.y) / m.h, sc = Math.hypot(ux, uy), rot = Math.atan2(uy, ux);
       e.labs.forEach(L => { const f = L.f * sc, x = a.x + L.x * ux + L.y * vx, y = a.y + L.x * uy + L.y * vy; if (x < -60 || y < -60 || x > sz.x + 60 || y > sz.y + 60) return;
-        if (f >= 7.5) return AGMaps.textBlock(c, {x, y, a: L.a + rot, b: L.b, t: L.t}, f);
+        // one size for the whole zone: a plot too narrow for the full label at that size shows its number only, so sizes don't jump around
+        const fm = (e.fm || L.f) * sc;
+        if (f >= 7.5 && f >= fm * .8) return AGMaps.textBlock(c, {x, y, a: L.a + rot, b: L.b, t: L.t}, Math.min(f, fm));
         // zoomed out: the plot is too small for 3 lines, so show just its number at a readable size, skipping any that would overlap
-        const n = String(L.t[1]), fn = Math.max(9, Math.min(13, (L.w || L.f * 3) * sc * 1.05 / (n.length * .6 + .2))), hw = n.length * fn * .32 + 2, hh = fn * .6 + 1;
+        const n = String(L.t[1]), fn = Math.max(9, Math.min(Math.max(13, fm), (L.w || L.f * 3) * sc * 1.05 / (n.length * .6 + .2))), hw = n.length * fn * .32 + 2, hh = fn * .6 + 1;
         if (hit(x - hw, y - hh, x + hw, y + hh)) return;
         c.save(); c.translate(x, y); c.rotate(L.a + rot); c.textAlign = "center"; c.textBaseline = "middle"; c.font = "bold " + fn.toFixed(1) + "px Helvetica, Arial, sans-serif";
         c.lineWidth = Math.max(2.5, fn * .3); c.lineJoin = "round"; c.strokeStyle = L.b ? "rgba(120,0,0,.95)" : "rgba(255,255,255,.95)"; c.strokeText(n, 0, 0);
