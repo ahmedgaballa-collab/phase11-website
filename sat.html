@@ -329,6 +329,7 @@ $("fDl").addEventListener("click", () => { const c = map.getCenter(); let best =
   try {
     const r = await fetch(SB + "v_stats_by_zone?select=zone_id,total_plots,booked,available", {cache: "no-store", headers: {apikey: KEY, Authorization: "Bearer " + KEY}});
     if (r.ok){ (await r.json()).forEach(z => STATS.set(String(z.zone_id), z)); draw(); }
+    const zq = new URLSearchParams(location.search).get("zone"); if (zq){ const m = MAPS.find(x => x.zid === zq); if (m) setTimeout(() => goZone(m.i), 400); }
   } catch (e) { console.warn(e); }
 })();
 
