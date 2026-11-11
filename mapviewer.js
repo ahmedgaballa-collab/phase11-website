@@ -46,6 +46,7 @@
     ".agmv-st i{width:13px;height:13px;border-radius:3px;background:#C8282C;display:inline-block;border:1px solid #fff}" +
     ".agmv.hide-res .agmv-layer canvas{display:none}" +
     ".agmv-lbl{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
+    ".agmv-nc{position:absolute;top:12px;left:12px;width:46px;height:46px;pointer-events:none;z-index:3;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}.agmv-nc svg{width:100%;height:100%;transition:transform .3s}" +
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
@@ -57,7 +58,7 @@
   }
 
   /* ---------- viewer ---------- */
-  var locA, root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
+  var ncEl, locA, root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
   var natW = 0, natH = 0, list = [], pos = 0, s = 1, tx = 0, ty = 0, minS = 1, pointers = {}, pinch = null, drag = null, lastTap = 0, pushed = false;
 
   function build() {
@@ -67,13 +68,13 @@
       '<div class="agmv-top"><button type="button" data-a="close" aria-label="إغلاق">✕</button>' +
       '<div class="agmv-t"><b></b><small></small></div>' +
       '<button type="button" data-a="prev" aria-label="الخريطة اللي قبلها">›</button><button type="button" data-a="next" aria-label="الخريطة اللي بعدها">‹</button></div>' +
-      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><canvas class="agmv-lbl"></canvas><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
+      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><canvas class="agmv-lbl"></canvas><div class="agmv-nc" hidden title="اتجاه الشمال"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="rgba(11,31,63,.82)" stroke="#E3C27A" stroke-width="1.5"/><path d="M20 5 L26 21 L20 18 L14 21Z" fill="#E3502E"/><path d="M20 35 L26 21 L20 24 L14 21Z" fill="#fff"/><text x="20" y="15.5" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" font-family="Arial">N</text></svg></div><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
       '<div class="agmv-bot"><button type="button" data-a="in" aria-label="تكبير">＋</button><button type="button" data-a="out" aria-label="تصغير">－</button>' +
       '<span class="agmv-st" hidden><i></i><span></span></span><button type="button" data-a="res" hidden>إخفاء المحجوز</button><button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
       '<a class="agmv-b agmv-loc" target="_blank" rel="noopener" hidden><span>📍</span><span class="agmv-txt">اللوكيشن</span></a><a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
       '<a class="agmv-b agmv-wa" target="_blank" rel="noopener"><span>واتساب</span><span class="agmv-txt">— اسأل عن المنطقة دي</span></a></div>';
     document.body.appendChild(root);
-    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); lbl = stage.querySelector(".agmv-lbl"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
+    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); lbl = stage.querySelector(".agmv-lbl"); ncEl = stage.querySelector(".agmv-nc"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
     titleB = root.querySelector(".agmv-t b"); titleS = root.querySelector(".agmv-t small");
     loadEl = root.querySelector(".agmv-load"); hintEl = root.querySelector(".agmv-hint");
     dlA = root.querySelector('[data-a="dl"]'); locA = root.querySelector(".agmv-loc"); waA = root.querySelector(".agmv-wa");
@@ -299,6 +300,30 @@
 
   var LBL = [], mctx = document.createElement("canvas").getContext("2d");   // labels currently drawn crisp on the overlay: {x, y, a, f, t:[area, no, dp], b: booked}
   function fmt(n) { n = Number(n); if (!isFinite(n)) return ""; return n.toLocaleString("en-US", { maximumFractionDigits: 2 }); }
+  /* prebuilt vectors (scripts/build_geo.py): plot outlines + label boxes per zone — no image analysis on the phone */
+  var vecCache = {};
+  function loadVec(it) {
+    if (!vecCache[it.zid]) vecCache[it.zid] = fetch("maps/v/" + it.zid + ".json?v=" + VEC_V).then(function (r) { if (!r.ok) throw 0; return r.json(); }).catch(function () { return null; });
+    return vecCache[it.zid];
+  }
+  var VEC_V = 1;
+  // draw plot fills (booked red / available plot colour) on ctx in image px * k; returns {n, labs}
+  function paintVec(ctx, it, V, st, k, onlyPlots) {
+    var Y = "rgb(" + V.Y.join(",") + ")", n = 0, labs = [];
+    it.plots.forEach(function (p, i) {
+      var b = st.booked(p), inf = st.info(p), poly = V.p[i], L = V.l[i]; if (b) n++;
+      if (poly) { ctx.beginPath(); for (var j = 0; j < poly.length; j += 2) { var x = poly[j] * k, y = poly[j + 1] * k; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath();
+        ctx.fillStyle = b ? "#C8282C" : Y; ctx.fill(); if (onlyPlots) { ctx.lineWidth = Math.max(1, 1.6 * k); ctx.strokeStyle = "rgba(40,40,40,.55)"; ctx.stroke(); } }
+      else if (b) { ctx.fillStyle = "rgba(200,40,44,.85)"; ctx.beginPath(); ctx.arc(p[2] * k, p[3] * k, Math.max(8, it.r || 14) * .9 * k, 0, 7); ctx.fill(); }
+      if (!L) return;
+      var tt = inf ? [fmt(inf.a), String(p[0]), fmt(inf.dp)] : ["", String(p[0]), ""], ff = L[3];
+      mctx.font = "bold 78px Helvetica, Arial, sans-serif"; var wm = Math.max(mctx.measureText(tt[0]).width, mctx.measureText(tt[2]).width) / 100;
+      mctx.font = "bold 100px Helvetica, Arial, sans-serif"; wm = Math.max(wm, mctx.measureText(tt[1]).width / 100);
+      if (wm > 0 && ff * wm > L[4] * 1.08) ff = L[4] * 1.08 / wm;
+      labs.push({ x: L[0], y: L[1], a: L[2], f: ff, b: b, t: tt });
+    });
+    return { n: n, labs: labs };
+  }
   function paintMap(it, im, st, cv) {
     var own = !cv; cv = cv || svg;
     var A = analyze(it, im), W = A.W, H = A.H; cv.width = W; cv.height = H; var labs = [];
@@ -409,9 +434,12 @@
     if (!it.plots || !it.plots.length) return;
     // keep the map live while it's open: re-check every 2 minutes
     resTimer = setInterval(function () { if (list[pos] === it && root.style.display !== "none") { delete cityData[it.city]; drawReserved(it, true); } else clearInterval(resTimer); }, 120000);
-    Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
+    Promise.all([loadStatus(it), loadVec(it)]).then(function (v) {
       if (list[pos] !== it) return;
-      var n = paintMap(it, v[1], v[0]);
+      if (v[1]) { svg.width = it.w; svg.height = it.h; var cx = svg.getContext("2d"); cx.clearRect(0, 0, it.w, it.h); var R = paintVec(cx, it, v[1], v[0], 1); LBL = R.labs; drawLabels(); return R.n; }
+      return fullImg(it.file).then(function (im) { return list[pos] === it ? paintMap(it, im, v[0]) : null; });
+    }).then(function (n) {
+      if (n == null || list[pos] !== it) return;
       stEl.hidden = false; resB.hidden = !n;
       stEl.querySelector("span").textContent = n ? ("محجوز " + n + " من " + it.plots.length + " · متاح " + (it.plots.length - n)) : ("كل القطع متاحة (" + it.plots.length + ")");
     }).catch(function (e) { console.warn("map overlay", e); });
@@ -421,6 +449,7 @@
     var it = list[pos];
     titleB.textContent = it.area; titleS.textContent = it.city + (list.length > 1 ? "  ·  " + (pos + 1) + " من " + list.length : "");
     prevB.style.visibility = nextB.style.visibility = list.length > 1 ? "visible" : "hidden";
+    if (it.geo) { ncEl.hidden = false; ncEl.firstChild.style.transform = "rotate(" + (-it.geo.r) + "deg)"; } else ncEl.hidden = true;
     if (it.loc) { locA.hidden = false; locA.href = "https://www.google.com/maps?q=" + it.loc[0] + "," + it.loc[1]; } else locA.hidden = true;
     dlA.href = it.file; dlA.setAttribute("download", (it.city + " - " + it.area).replace(/[\\/:*?"<>|]/g, "") + ".webp");
     waA.href = "https://wa.me/" + WA + "?text=" + encodeURIComponent("مساء الخير، عايز أستفسر عن قطع " + it.area + " في " + it.city + " (المرحلة 11)");
@@ -451,5 +480,28 @@
   function hide() { if (root) root.style.display = "none"; document.documentElement.style.overflow = ""; }
   function close() { if (pushed) { history.back(); } else hide(); }
 
-  window.AGMaps = { load: load, find: find, open: open, norm: norm, overlay: overlay };
+  // offline build helper: plot regions as an id image (R,G = id+1) + label boxes, for scripts/build_geo.py
+  function exportAnalysis(i) {
+    return load().then(function (all) { var it = all[i]; return fullImg(it.file).then(function (im) {
+      var A = analyze(it, im), W = A.W, H = A.H, c = document.createElement("canvas"); c.width = W; c.height = H;
+      var x = c.getContext("2d"), d = x.createImageData(W, H), dd = d.data;
+      A.reg.forEach(function (px, id) { if (!px) return; var v = id + 1; px.forEach(function (q) { var j = q * 4; dd[j] = v & 255; dd[j + 1] = v >> 8; dd[j + 2] = 0; dd[j + 3] = 255; }); });
+      x.putImageData(d, 0, 0);
+      return { png: c.toDataURL("image/png"), labs: A.lab.map(function (L) { return L ? [+L.x.toFixed(1), +L.y.toFixed(1), +L.a.toFixed(4), +L.f.toFixed(2), +L.w.toFixed(1)] : null; }), Y: A.Y };
+    }); });
+  }
+  // live data for a zone: vectors + booking status (satellite page draws them itself)
+  function zoneLive(i) { return load().then(function (all) { var it = all[i]; return Promise.all([loadVec(it), loadStatus(it)]).then(function (v) { return { it: it, V: v[0], st: v[1] }; }); }); }
+  // full-resolution picture of a zone with live colours and crisp labels (for PNG / PDF download)
+  function renderFull(i, plotsOnly) {
+    return zoneLive(i).then(function (z) { return fullImg(z.it.file).then(function (im) {
+      var it = z.it, c = document.createElement("canvas"); c.width = it.w; c.height = it.h; var x = c.getContext("2d");
+      x.fillStyle = "#fff"; x.fillRect(0, 0, it.w, it.h); if (!plotsOnly) x.drawImage(im, 0, 0, it.w, it.h);
+      var R = z.V ? paintVec(x, it, z.V, z.st, 1, plotsOnly) : { n: 0, labs: [] };
+      R.labs.forEach(function (L) { textBlock(x, L, L.f); });
+      return { canvas: c, it: it, n: R.n };
+    }); });
+  }
+  window.AGMaps = { load: load, find: find, open: open, norm: norm, overlay: overlay, _export: exportAnalysis,
+    zoneLive: zoneLive, paintVec: paintVec, textBlock: textBlock, renderFull: renderFull, refresh: function (city) { delete cityData[city]; } };
 })();

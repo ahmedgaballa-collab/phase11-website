@@ -93,10 +93,18 @@ body{display:flex;flex-direction:column}
 .seg button.on{background:var(--ink);color:var(--surface);font-weight:700}
 .tg{font-size:13px;display:flex;gap:5px;align-items:center;color:var(--ink-2)}
 .fb{height:36px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:0 12px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
-.fb:first-of-type{margin-inline-start:auto}
+.sp{flex:1}
+.vw a{text-decoration:none;color:var(--ink-2);font-size:13px;padding:5px 12px;border-radius:999px;white-space:nowrap}
+.vw a.on{background:var(--ink);color:var(--surface);font-weight:700}
+.zsel{position:relative}.zpan{position:absolute;z-index:900;top:40px;inset-inline-start:0;width:280px;max-height:320px;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px}
+.zpan label{display:flex;gap:8px;align-items:center;padding:6px 8px;border-radius:8px;font-size:13px;cursor:pointer}.zpan label:hover{background:var(--surface-2)}
+.zpan .zall{border-bottom:1px solid var(--line);margin-bottom:4px;font-weight:700}
+.tg.op input{width:90px}
+.ncomp{width:44px;height:44px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+.dlwait{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px}
 body.full .topbar{display:none}
 .side{top:132px}
-@media (max-width:720px){.fbar .fb span{display:none}.side{top:auto}}
+@media (max-width:720px){.fbar .fb span{display:none}.side{top:auto}.tg.op span{display:none}.tg.op input{width:70px}.fbar{gap:6px;padding:6px 8px}}
 /* calibration split */
 body.cal #map{margin-inline-end:50%}
 #imgmap{position:fixed;top:120px;bottom:0;left:0;width:50%;z-index:400;background:#fff;border-right:3px solid var(--gold)}
@@ -120,7 +128,7 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
 <body>
 <header class="topbar"><div class="wrap">
   <a class="brand" href="/"><img src="logo.png" alt="AG"><span><b>أحمد جاب الله</b><small>مستشارك العقاري — المرحلة 11</small></span></a>
-  <nav class="nav"><a href="/">الرئيسية</a><a href="/search">ابحث عن قطعتك</a><a href="/dashboard">الحجوزات</a><a href="/maps">الخرائط</a><a class="on" href="/sat">القمر الصناعي</a><a href="/about">عنّي</a></nav>
+  <nav class="nav"><a href="/">الرئيسية</a><a href="/search">ابحث عن قطعتك</a><a href="/dashboard">الحجوزات</a><a class="on" href="/maps">الخرائط</a><a href="/about">عنّي</a></nav>
   <div class="top-actions">
     <a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener" title="قناة التليجرام"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a>
     <button class="icon-btn" id="themeBtn" type="button" aria-label="الوضع الفاتح / الغامق"></button>
@@ -128,11 +136,17 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
 </div></header>
 
 <div class="fbar">
+  <div class="seg vw"><a href="/maps" id="vCards">🗂 الكروت</a><a class="on" href="#">🛰 القمر الصناعي</a></div>
   <select id="fCity" aria-label="المدينة"><option value="">كل المدن</option></select>
+  <div class="zsel" id="zsel" hidden><button type="button" class="fb" id="zBtn">المناطق: <b id="zCnt">الكل</b> ▾</button><div class="zpan" id="zPan" hidden></div></div>
   <div class="seg" id="fSt"><button type="button" data-s="" class="on">الكل</button><button type="button" data-s="av">فيها متاح</button><button type="button" data-s="done">خلصت</button></div>
+  <label class="tg op" title="شفافية الخريطة"><span>الخريطة</span><input type="range" id="fOp" min="0" max="100" value="90"></label>
+  <label class="tg"><input type="checkbox" id="fOnly"> القطع بس</label>
   <label class="tg"><input type="checkbox" id="fBooked" checked> لوّن المحجوز</label>
+  <span class="sp"></span>
   <button type="button" class="fb" id="fFull" title="ملء الشاشة">⛶ <span>ملء الشاشة</span></button>
-  <button type="button" class="fb" id="fDl" title="تنزيل الخريطة اللي قدامك">⬇ <span>تنزيل</span></button>
+  <button type="button" class="fb" id="fPng" title="تنزيل صورة">🖼 <span>صورة</span></button>
+  <button type="button" class="fb" id="fPdf" title="تنزيل PDF">📄 <span>PDF</span></button>
 </div>
 <div id="map" role="application" aria-label="خريطة القمر الصناعي"></div>
 <aside class="side" id="side">
@@ -144,7 +158,7 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
   <div class="list" id="list"></div>
 </aside>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="mapviewer.js?v=11"></script>
+<script src="mapviewer.js?v=12"></script>
 <script>
 const SB = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
@@ -163,8 +177,9 @@ const EDIT = /[?&#]edit/.test(location.search + location.hash), ONLYMISS = EDIT 
 let MAPS = [], STATS = new Map(), markers = new Map(), GEO = {};
 try { if (EDIT) GEO = JSON.parse(localStorage.getItem("ag-geo") || "{}"); } catch (e) {}
 const AUTO = {}; // zid -> automatic placement: NUCA location pin, scale from the plots' real areas, north up
-const F = {city: "", st: ""};
-const passF = m => { if (F.city && m.city !== F.city) return false; const z = STATS.get(String(m.zid)); if (F.st === "av") return !z || z.available > 0; if (F.st === "done") return z && !z.available; return true; };
+const QP = new URLSearchParams(location.search);
+const F = {city: QP.get("city") || "", st: "", zones: new Set((QP.get("zones") || "").split(",").filter(Boolean))};
+const passF = m => { if (F.city && m.city !== F.city) return false; if (F.zones.size && !F.zones.has(m.zid)) return false; const z = STATS.get(String(m.zid)); if (F.st === "av") return !z || z.available > 0; if (F.st === "done") return z && !z.available; return true; };
 // only zones Ahmed placed by hand are drawn on the ground; the editor still needs a starting guess for the rest
 const geoOf = m => GEO[m.zid] || m.geo || (EDIT && m.loc ? (AUTO[m.zid] || {c: m.loc, r: 0, s: 0, auto: 1}) : null);
 
@@ -197,11 +212,59 @@ async function showZone(m){
 }
 function hideZone(m){ const e = OV.get(m.zid); if (e && e.layer && map.hasLayer(e.layer)) e.layer.remove(); }
 function refreshOverlays(){
-  if (EDIT) return;
+  if (!EDIT) return refreshGround();
+  return;
   const show = map.getZoom() >= 14, b = map.getBounds().pad(.3);
   MAPS.forEach(m => { const g = geoOf(m); if (!g || m.zid === "4803") return; if (!passF(m)) return hideZone(m); if (show && b.contains(g.c)) showZone(m); else hideZone(m); });
 }
 map.on("moveend zoomend", refreshOverlays);
+
+/* ---------- viewer: each zone's map + live plots placed on the ground (vectors, no image analysis) ---------- */
+const UI = {op: .9, only: false, bk: true};
+const Ground = L.Layer.extend({
+  initialize(m){ this.m = m; const el = this.el = document.createElement("div"); el.className = "leaflet-zoom-hide";
+    el.style.cssText = `position:absolute;left:0;top:0;width:${m.w}px;height:${m.h}px;transform-origin:0 0;pointer-events:none`;
+    this.img = new Image(); this.img.decoding = "async"; this.img.style.cssText = `position:absolute;left:0;top:0;width:${m.w}px;height:${m.h}px`;
+    this.cv = document.createElement("canvas"); this.cv.style.cssText = `position:absolute;left:0;top:0;width:${m.w}px;height:${m.h}px`;
+    el.append(this.img, this.cv); this.hi = null; this.style(); },
+  onAdd(map){ this._m = map; map.getPanes().overlayPane.appendChild(this.el); map.on("zoomend viewreset moveend", this._up, this); this._up(); },
+  onRemove(map){ this.el.remove(); map.off("zoomend viewreset moveend", this._up, this); },
+  corners(){ const m = this.m; return corners(geoOf(m), {it: m, crop: [0, 0, m.w, m.h]}); },
+  _up(){ const map = this._m; if (!map) return; const [a, b, c] = this.corners().map(p => map.latLngToLayerPoint(p)), w = this.m.w, h = this.m.h;
+    this.el.style.transform = `matrix(${(b.x - a.x) / w},${(b.y - a.y) / w},${(c.x - a.x) / h},${(c.y - a.y) / h},${a.x},${a.y})`;
+    const hi = map.getZoom() >= 17; if (hi !== this.hi){ this.hi = hi; this.img.src = `maps/t/${hi ? "" : "s/"}${this.m.zid}.webp`; } },
+  style(){ this.img.style.opacity = UI.only ? 0 : UI.op; this.cv.style.display = UI.bk ? "" : "none"; }
+});
+const GL = new Map(); // zid -> {layer, labs, n}
+const K = .5; // plot canvas at half the map resolution
+async function paintZone(z){ const e = GL.get(z.zid); if (!e) return;
+  const d = await AGMaps.zoneLive(z.i); if (!d.V) return; const cv = e.layer.cv; cv.width = Math.round(z.w * K); cv.height = Math.round(z.h * K);
+  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; LB.draw(); }
+function groundOn(m){ let e = GL.get(m.zid); if (!e){ e = {layer: new Ground(m), labs: []}; GL.set(m.zid, e); paintZone(m); } if (!map.hasLayer(e.layer)) e.layer.addTo(map); }
+function groundOff(m){ const e = GL.get(m.zid); if (e && map.hasLayer(e.layer)) e.layer.remove(); }
+// crisp labels: redrawn in screen pixels after every move, so the numbers stay sharp at any zoom
+const LB = {
+  cv: null,
+  init(){ const pane = map.createPane("labels"); pane.style.zIndex = 450; pane.style.pointerEvents = "none"; this.cv = document.createElement("canvas"); this.cv.style.cssText = "position:absolute;left:0;top:0;pointer-events:none"; map.getContainer().appendChild(this.cv); this.cv.style.zIndex = 450;
+    map.on("move zoom viewreset resize moveend zoomend", () => this.draw()); map.on("zoomstart", () => { this.cv.style.visibility = "hidden"; }); map.on("zoomend", () => { this.cv.style.visibility = ""; }); },
+  draw(){ const cv = this.cv; if (!cv) return; const sz = map.getSize(), dpr = window.devicePixelRatio || 1;
+    if (cv.width !== sz.x * dpr || cv.height !== sz.y * dpr){ cv.width = sz.x * dpr; cv.height = sz.y * dpr; cv.style.width = sz.x + "px"; cv.style.height = sz.y + "px"; }
+    const c = cv.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); if (!UI.bk || map.getZoom() < 16) return;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    GL.forEach(e => { if (!map.hasLayer(e.layer) || !e.labs || !e.labs.length) return; const m = e.layer.m;
+      const [a, b, cc] = e.layer.corners().map(p => map.latLngToContainerPoint(p)), ux = (b.x - a.x) / m.w, uy = (b.y - a.y) / m.w, vx = (cc.x - a.x) / m.h, vy = (cc.y - a.y) / m.h, sc = Math.hypot(ux, uy), rot = Math.atan2(uy, ux);
+      e.labs.forEach(L => { const f = L.f * sc; if (f < 5.5) return; const x = a.x + L.x * ux + L.y * vx, y = a.y + L.x * uy + L.y * vy; if (x < -60 || y < -60 || x > sz.x + 60 || y > sz.y + 60) return;
+        AGMaps.textBlock(c, {x, y, a: L.a + rot, b: L.b, t: L.t}, f); }); }); }
+};
+function refreshGround(){
+  const show = map.getZoom() >= 14, bb = map.getBounds().pad(.3);
+  MAPS.forEach(m => { const g = m.geo; if (!g || m.zid === "4803") return; if (!passF(m) || !show || !bb.contains(g.c)) groundOff(m); else groundOn(m); });
+  LB.draw();
+}
+setInterval(() => { const cities = new Set(); GL.forEach((e, z) => { if (map.hasLayer(e.layer)) cities.add(e.layer.m.city); }); cities.forEach(c => AGMaps.refresh(c)); GL.forEach(e => { if (map.hasLayer(e.layer)) paintZone(e.layer.m); }); }, 120000);
+// north arrow (the satellite map is always north-up)
+const NC = L.control({position: "topright"}); NC.onAdd = () => { const d = L.DomUtil.create("div"); d.innerHTML = '<svg class="ncomp" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="rgba(11,31,63,.85)" stroke="#E3C27A" stroke-width="1.5"/><path d="M20 5 L26 21 L20 18 L14 21Z" fill="#E3502E"/><path d="M20 35 L26 21 L20 24 L14 21Z" fill="#fff"/><text x="20" y="15.5" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" font-family="Arial">N</text></svg>'; return d; };
+if (!EDIT){ NC.addTo(map); LB.init(); }
 
 /* ---------- pins, list ---------- */
 function popup(m){
@@ -209,7 +272,7 @@ function popup(m){
   const g = `https://www.google.com/maps?q=${m.loc[0]},${m.loc[1]}`, live = m.zid === "4803" ? null : geoOf(m);
   return `<div class="pop"><small>${esc(m.city)}</small><h3>${esc(m.area)}</h3>
     ${z ? `<div>متاح <b>${fmt(z.available)}</b> من ${fmt(z.total_plots)} قطعة</div><div class="bar"><i style="width:${pct}%"></i></div>` : ""}
-    <div class="btns">${live ? `<button class="b1" type="button" data-zoom="${m.i}">🛰 شوفها على الأرض</button>` : ""}<button class="${live ? "b2" : "b1"}" type="button" data-open="${m.i}">🗺 خريطة القطع</button><a class="b2" href="${g}" target="_blank" rel="noopener">📍 جوجل ماب</a><button class="b2" type="button" data-dl="${m.i}">⬇ تنزيل</button></div>
+    <div class="btns">${live ? `<button class="b1" type="button" data-zoom="${m.i}">🛰 شوفها على الأرض</button>` : ""}<button class="${live ? "b2" : "b1"}" type="button" data-open="${m.i}">🗺 خريطة القطع</button><a class="b2" href="${g}" target="_blank" rel="noopener">📍 جوجل ماب</a><button class="b2" type="button" data-dl="${m.i}">🖼 صورة</button><button class="b2" type="button" data-pdf="${m.i}">📄 PDF</button></div>
     ${m.locApprox ? `<div class="note">المكان تقريبي (على مستوى المدينة)</div>` : live && live.auto ? `<div class="note" style="color:#8F6E1F">الخريطة متحطوطة على مكانها تقريبيًا</div>` : ""}</div>`;
 }
 function pinIcon(m){
@@ -244,7 +307,8 @@ $("tog").addEventListener("click", () => $("side").classList.toggle("min"));
 map.on("popupopen", e => { const el = e.popup.getElement(), b = el.querySelector("[data-open]"), z = el.querySelector("[data-zoom]");
   if (b) b.onclick = () => { const i = +b.dataset.open, c = MAPS[i].city; AGMaps.open(i, MAPS.filter(m => m.city === c)); };
   if (z) z.onclick = () => { map.closePopup(); goZone(+z.dataset.zoom); };
-  const d = el.querySelector("[data-dl]"); if (d) d.onclick = () => dlZone(MAPS[+d.dataset.dl]); });
+  const d = el.querySelector("[data-dl]"); if (d) d.onclick = () => dlPng([MAPS[+d.dataset.dl]]);
+  const pf = el.querySelector("[data-pdf]"); if (pf) pf.onclick = () => dlPdf([MAPS[+pf.dataset.pdf]]); });
 
 /* ---------- alignment editor (?edit): place each zone map on the ground, then send the numbers ---------- */
 let cur = null, handle = null;
@@ -304,28 +368,55 @@ if (EDIT){
   const sg = saveGeo; saveGeo = function(){ sg(); cnt(); }; saveGeo();
 }
 
-$("fCity").addEventListener("change", e => { F.city = e.target.value; draw.done = 0; draw(); const ms = MAPS.filter(m => m.loc && passF(m)); if (ms.length) map.fitBounds(ms.map(m => m.loc), {padding: [60, 60], maxZoom: 15}); });
+function syncUrl(){ const u = new URL(location.href); F.city ? u.searchParams.set("city", F.city) : u.searchParams.delete("city"); F.zones.size ? u.searchParams.set("zones", [...F.zones].join(",")) : u.searchParams.delete("zones"); history.replaceState(null, "", u);
+  const v = new URL("/maps", location.origin); if (F.city) v.searchParams.set("city", F.city); if (F.zones.size) v.searchParams.set("zones", [...F.zones].join(",")); $("vCards").href = v.pathname + v.search; }
+function fitSel(){ const ms = MAPS.filter(m => m.loc && passF(m)); if (ms.length) map.fitBounds(ms.map(m => (m.geo && m.geo.c) || m.loc), {padding: [60, 60], maxZoom: F.zones.size ? 17 : 15}); }
+function renderZsel(){ $("zsel").hidden = !F.city; if (!F.city) return; const zs = MAPS.filter(m => m.city === F.city && m.loc);
+  $("zCnt").textContent = F.zones.size ? F.zones.size + " من " + zs.length : "الكل";
+  $("zPan").innerHTML = `<label class="zall"><input type="checkbox" data-all ${F.zones.size ? "" : "checked"}> كل المناطق</label>` + zs.map(m => `<label><input type="checkbox" data-z="${m.zid}" ${F.zones.has(m.zid) ? "checked" : ""}> ${esc(m.area)}</label>`).join(""); }
+$("fCity").addEventListener("change", e => { F.city = e.target.value; F.zones.clear(); syncUrl(); renderZsel(); draw.done = 1; draw(); fitSel(); });
+$("zBtn").addEventListener("click", () => { $("zPan").hidden = !$("zPan").hidden; });
+document.addEventListener("click", e => { if (!e.target.closest("#zsel")) $("zPan").hidden = true; });
+$("zPan").addEventListener("change", e => { const t = e.target; if (t.dataset.all != null) F.zones.clear(); else if (t.dataset.z) { t.checked ? F.zones.add(t.dataset.z) : F.zones.delete(t.dataset.z); }
+  syncUrl(); renderZsel(); $("zPan").hidden = false; draw(); fitSel(); });
+$("fOp").addEventListener("input", e => { UI.op = e.target.value / 100; GL.forEach(x => x.layer.style()); });
+$("fOnly").addEventListener("change", e => { UI.only = e.target.checked; GL.forEach(x => { x.layer.style(); paintZone(x.layer.m); }); });
 $("fSt").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (!b) return; F.st = b.dataset.s; $("fSt").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); draw(); });
-$("fBooked").addEventListener("change", e => { document.body.classList.toggle("nobk", !e.target.checked); OV.forEach(o => o.layer && (o.layer.cv.style.display = e.target.checked ? "" : "none")); });
+$("fBooked").addEventListener("change", e => { UI.bk = e.target.checked; GL.forEach(x => x.layer.style()); OV.forEach(o => o.layer && (o.layer.cv.style.display = e.target.checked ? "" : "none")); LB.draw(); });
 $("fFull").addEventListener("click", () => { const d = document; if (!d.fullscreenElement) { (d.documentElement.requestFullscreen || d.documentElement.webkitRequestFullscreen || (() => {})).call(d.documentElement); d.body.classList.add("full"); } else { d.exitFullscreen(); } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) document.body.classList.remove("full"); setTimeout(() => map.invalidateSize(), 200); });
-// download: the zone in view (closest to the centre) as its full live map — booked plots coloured, live numbers
-async function dlZone(m){
-  const btn = $("fDl"), t = btn.innerHTML; btn.innerHTML = "⏳"; try {
-    const O = await AGMaps.overlay(m.i, 1, true), c = O.canvas;
-    const a = document.createElement("a"); a.download = (m.city + " - " + m.area).replace(/[\\/:*?"<>|]/g, "") + ".png";
-    a.href = URL.createObjectURL(await new Promise(r => c.toBlob(r, "image/png"))); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
-  } finally { btn.innerHTML = t; } }
-$("fDl").addEventListener("click", () => { const c = map.getCenter(); let best = null, bd = 1e18;
-  MAPS.forEach(m => { if (!m.loc || !passF(m)) return; const g = geoOf(m) || {c: m.loc}; const d = map.distance(c, g.c); if (d < bd){ bd = d; best = m; } });
-  if (!best || (map.getZoom() < 12)) return alert("قرّب على منطقة الأول، أو اختار مدينة من الفلتر"); dlZone(best); });
+// downloads: the chosen zones (or the one in view) as full live maps — booked plots coloured, live numbers
+function dlTargets(){ const sel = MAPS.filter(m => m.loc && passF(m) && m.zid !== "4803");
+  if (F.zones.size) return sel; const c = map.getCenter(); let best = null, bd = 1e18;
+  sel.forEach(m => { const g = (m.geo && m.geo.c) || m.loc, d = map.distance(c, g); if (d < bd){ bd = d; best = m; } });
+  return best && map.getZoom() >= 12 ? [best] : []; }
+const fname = m => (m.city + " - " + m.area).replace(/[\\/:*?"<>|]/g, "");
+function save(blob, name){ const a = document.createElement("a"); a.download = name; a.href = URL.createObjectURL(blob); document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000); }
+function busy(on, msg){ let d = $("dlw"); if (on){ if (!d){ d = document.createElement("div"); d.id = "dlw"; d.className = "dlwait"; document.body.appendChild(d); } d.textContent = msg || "جاري التجهيز…"; } else if (d) d.remove(); }
+async function dlZone(m, kind){ return kind === "pdf" ? dlPdf([m]) : dlPng([m]); }
+async function dlPng(ms){ if (!ms.length) return alert("اختار منطقة من الفلتر أو قرّب عليها الأول");
+  try { for (const [k, m] of ms.entries()){ busy(true, `جاري تجهيز الصورة ${k + 1} من ${ms.length}…`); const R = await AGMaps.renderFull(m.i, UI.only);
+    save(await new Promise(r => R.canvas.toBlob(r, "image/png")), fname(m) + ".png"); } } finally { busy(false); } }
+let jspdfP = null;
+function jspdf(){ return jspdfP || (jspdfP = new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; sc.onload = () => ok(window.jspdf.jsPDF); sc.onerror = no; document.head.appendChild(sc); })); }
+async function dlPdf(ms){ if (!ms.length) return alert("اختار منطقة من الفلتر أو قرّب عليها الأول");
+  try { busy(true, "جاري تجهيز الـ PDF…"); const J = await jspdf(); let doc = null;
+    for (const [k, m] of ms.entries()){ busy(true, `جاري تجهيز صفحة ${k + 1} من ${ms.length}…`); const R = await AGMaps.renderFull(m.i, UI.only), c = R.canvas, land = c.width >= c.height;
+      if (!doc) doc = new J({orientation: land ? "l" : "p", unit: "pt", format: "a4"}); else doc.addPage("a4", land ? "l" : "p");
+      const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), sc = Math.min((pw - 24) / c.width, (ph - 24) / c.height);
+      doc.addImage(c.toDataURL("image/jpeg", .9), "JPEG", (pw - c.width * sc) / 2, (ph - c.height * sc) / 2, c.width * sc, c.height * sc); }
+    save(doc.output("blob"), (ms.length === 1 ? fname(ms[0]) : (F.city || "خرائط المرحلة 11") + " - " + ms.length + " مناطق") + ".pdf");
+  } catch (e) { alert("حصلت مشكلة في تجهيز الملف، جرّب تاني"); console.warn(e); } finally { busy(false); } }
+$("fPng").addEventListener("click", () => dlPng(dlTargets()));
+$("fPdf").addEventListener("click", () => dlPdf(dlTargets()));
 
 (async () => {
   MAPS = await AGMaps.load();
   // editor: zones with no NUCA link start at the middle of their city, so they can be placed by hand
   if (EDIT) MAPS.forEach(m => { if (m.loc) return; const c = MAPS.filter(x => x.city === m.city && x.loc); if (c.length) { m.loc = [c.reduce((a, x) => a + x.loc[0], 0) / c.length, c.reduce((a, x) => a + x.loc[1], 0) / c.length]; m.noLink = 1; } });
   [...new Set(MAPS.filter(m => m.loc).map(m => m.city))].sort((a, b) => a.localeCompare(b, "ar")).forEach(c => { const o = document.createElement("option"); o.value = o.textContent = c; $("fCity").appendChild(o); });
-  draw();
+  if (F.city) $("fCity").value = F.city; syncUrl(); renderZsel();
+  if (F.city && !EDIT){ draw.done = 1; draw(); fitSel(); } else draw();
   try {
     const r = await fetch(SB + "v_stats_by_zone?select=zone_id,total_plots,booked,available", {cache: "no-store", headers: {apikey: KEY, Authorization: "Bearer " + KEY}});
     if (r.ok){ (await r.json()).forEach(z => STATS.set(String(z.zone_id), z)); draw(); }
