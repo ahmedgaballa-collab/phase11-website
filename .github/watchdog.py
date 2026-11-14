@@ -19,13 +19,13 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
-SUPABASE_URL = "https://mupmkecxgnickmbdvlno.supabase.co"
+SUPABASE_URL = "https://data.ahmedgaballah.net"
 SUPABASE_ANON = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24i"
                  "LCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI")
 STALE_MIN = int(os.environ.get("STALE_MIN", "15"))
 REMIND_MIN = int(os.environ.get("REMIND_MIN", "60"))
 STATE = os.environ.get("WATCHDOG_STATE", "watchdog_state.json")
-DASH = "https://phase11ahmedgaballah-beta.vercel.app/dashboard"
+DASH = "https://www.ahmedgaballah.net/dashboard"
 CAIRO = timezone(timedelta(hours=3))      # Egypt summer time; good enough for display
 try:
     from zoneinfo import ZoneInfo
