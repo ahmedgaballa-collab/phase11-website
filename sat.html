@@ -239,9 +239,22 @@ const GL = new Map(); // zid -> {layer, labs, n}
 const K = .5; // plot canvas at half the map resolution
 async function paintZone(z){ const e = GL.get(z.zid); if (!e) return;
   const d = await AGMaps.zoneLive(z.i); if (!d.V) return; const cv = e.layer.cv; cv.width = Math.round(z.w * K); cv.height = Math.round(z.h * K);
-  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; const fs = R.labs.map(l => l.f).sort((p, q) => p - q); e.fm = fs.length ? fs[fs.length >> 1] : 0; LB.draw();   if (!e.clip){ e.clip = 1; const h = clipHull(d.V, z); if (h) e.layer.el.style.clipPath = "polygon(" + h.map(q => q[0].toFixed(0) + "px " + q[1].toFixed(0) + "px").join(",") + ")"; } }
-// each zone's map sheet also prints its neighbours; overlapping sheets then show two sets of numbers.
-// So each sheet is cut to its own plots (their outline, pushed out to the middle of the surrounding street).
+  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; const fs = R.labs.map(l => l.f).sort((p, q) => p - q); e.fm = fs.length ? fs[fs.length >> 1] : 0; LB.draw();  }
+// each zone's map sheet also prints the neighbouring zones; where two sheets overlap you'd see two sets of numbers.
+// So each sheet stays whole (the full map around it), except over the plots of the other zones of the same city,
+// which are hidden there and left to that zone's own sheet.
+const geoPx = (m, la, ln) => { const g = geoOf(m), r = g.r * Math.PI / 180, e = (ln - g.c[1]) * 111320 * Math.cos(la * Math.PI / 180), so = (g.c[0] - la) * 111320;
+  return [(e * Math.cos(r) + so * Math.sin(r)) / g.s + m.w / 2, (-e * Math.sin(r) + so * Math.cos(r)) / g.s + m.h / 2]; };
+const pxGeo = (m, x, y) => { const g = geoOf(m), r = g.r * Math.PI / 180, u = x - m.w / 2, v = y - m.h / 2, e = g.s * (u * Math.cos(r) - v * Math.sin(r)), so = g.s * (u * Math.sin(r) + v * Math.cos(r)), la = g.c[0] - so / 111320;
+  return [la, g.c[1] + e / (111320 * Math.cos(la * Math.PI / 180))]; };
+const HULL = new Map(); // zid -> ground hull of its plots
+function groundHull(o){ let h = HULL.get(o.zid); if (h === undefined){ const P = o.plots.map(p => [p[2], p[3]]); const hh = P.length >= 3 ? clipHull({p: [P.flat()]}, {r: Math.max(26, (o.r || 14) * 3)}) : null; h = hh ? hh.map(q => pxGeo(o, q[0], q[1])) : null; HULL.set(o.zid, h); } return h; }
+function maskSheet(m, el){ const q = 4, cv = document.createElement("canvas"); cv.width = Math.ceil(m.w / q); cv.height = Math.ceil(m.h / q); const c = cv.getContext("2d"); c.fillStyle = "#000"; c.fillRect(0, 0, cv.width, cv.height);
+  const poly = (h, o) => { c.beginPath(); h.forEach((g, i) => { const [x, y] = geoPx(m, g[0], g[1]); i ? c.lineTo(x / q, y / q) : c.moveTo(x / q, y / q); }); c.closePath(); c.fill(); };
+  const bb = zoneBounds(m); let any = 0; c.globalCompositeOperation = "destination-out";
+  MAPS.forEach(o => { if (o === m || o.city !== m.city || !geoOf(o) || o.zid === "4803" || !bb.intersects(zoneBounds(o))) return; const h = groundHull(o); if (h){ poly(h); any = 1; } });
+  if (!any) return; c.globalCompositeOperation = "source-over"; const own = groundHull(m); if (own) poly(own);
+  const u = "url(" + cv.toDataURL("image/png") + ")"; el.style.maskImage = el.style.webkitMaskImage = u; el.style.maskSize = el.style.webkitMaskSize = "100% 100%"; el.style.maskRepeat = el.style.webkitMaskRepeat = "no-repeat"; }
 function clipHull(V, z){ const P = []; V.p.forEach(p => { if (p) for (let i = 0; i < p.length; i += 2) P.push([p[i], p[i + 1]]); }); if (P.length < 3) return null;
   P.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
   P.forEach(p => { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); });
@@ -251,7 +264,7 @@ function clipHull(V, z){ const P = []; V.p.forEach(p => { if (p) for (let i = 0;
     const n1 = norm2([p[1] - a[1], a[0] - p[0]]), n2 = norm2([b[1] - p[1], p[0] - b[0]]); let m = norm2([n1[0] + n2[0], n1[1] + n2[1]]); const c = Math.max(.35, m[0] * n1[0] + m[1] * n1[1]);
     return [p[0] + m[0] * pad / c, p[1] + m[1] * pad / c]; }); }
 const norm2 = v => { const l = Math.hypot(v[0], v[1]) || 1; return [v[0] / l, v[1] / l]; };
-function groundOn(m){ let e = GL.get(m.zid); if (!e){ e = {layer: new Ground(m), labs: []}; GL.set(m.zid, e); paintZone(m); } if (!map.hasLayer(e.layer)) e.layer.addTo(map); }
+function groundOn(m){ let e = GL.get(m.zid); if (!e){ e = {layer: new Ground(m), labs: []}; GL.set(m.zid, e); try { maskSheet(m, e.layer.el); } catch (x) { console.warn(x); } paintZone(m); } if (!map.hasLayer(e.layer)) e.layer.addTo(map); }
 function groundOff(m){ const e = GL.get(m.zid); if (e && map.hasLayer(e.layer)) e.layer.remove(); }
 // crisp labels: redrawn in screen pixels after every move, so the numbers stay sharp at any zoom
 const LB = {
