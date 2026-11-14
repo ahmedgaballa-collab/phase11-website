@@ -237,7 +237,7 @@ function hideZone(m){ const e = OV.get(m.zid); if (e && e.layer && map.hasLayer(
 function refreshOverlays(){
   if (!EDIT) return refreshGround();
   return;
-  const show = map.getZoom() >= 14, b = map.getBounds().pad(.3);
+  const show = map.getZoom() >= 12, b = map.getBounds().pad(.3);
   MAPS.forEach(m => { const g = geoOf(m); if (!g || m.zid === "4803") return; if (!passF(m)) return hideZone(m); if (show && b.contains(g.c)) showZone(m); else hideZone(m); });
 }
 map.on("moveend zoomend", refreshOverlays);
@@ -326,7 +326,7 @@ const LB = {
 const ZB = new Map();
 function zoneBounds(m){ let b = ZB.get(m.zid); if (!b){ const [a, bb, c] = corners(geoOf(m), {it: m, crop: [0, 0, m.w, m.h]}), d = L.latLng(bb.lat + c.lat - a.lat, bb.lng + c.lng - a.lng); b = L.latLngBounds([a, bb, c, d]); ZB.set(m.zid, b); } return b; }
 function refreshGround(){
-  const show = map.getZoom() >= 14, bb = map.getBounds().pad(.3);
+  const show = map.getZoom() >= 12, bb = map.getBounds().pad(.3);
   MAPS.forEach(m => { const g = geoOf(m); if (!g || m.zid === "4803") return; if (!passF(m) || !show || !bb.intersects(zoneBounds(m))) groundOff(m); else groundOn(m); });
   LB.draw();
 }
@@ -340,6 +340,10 @@ setInterval(async () => { if (document.hidden) return; const vis = [...GL.values
 const NC = L.control({position: "topright"}); NC.onAdd = () => { const d = L.DomUtil.create("div"); d.innerHTML = '<svg class="ncomp" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="rgba(11,31,63,.85)" stroke="#E3C27A" stroke-width="1.5"/><path d="M20 5 L26 21 L20 18 L14 21Z" fill="#E3502E"/><path d="M20 35 L26 21 L20 24 L14 21Z" fill="#fff"/><text x="20" y="15.5" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" font-family="Arial">N</text></svg>'; return d; };
 if (!EDIT){ NC.addTo(map); LB.init(); }
 
+// a zone's pin sits in the middle of its plots on the ground (the hand-placed map), not at the authority's rough location point
+const PIN = new Map();
+function pinLL(m){ if (EDIT || !geoOf(m) || m.zid === "4803" || !m.plots.length) return m.loc; let p = PIN.get(m.zid);
+  if (!p){ let x = 0, y = 0; m.plots.forEach(q => { x += q[2]; y += q[3]; }); p = pxGeo(m, x / m.plots.length, y / m.plots.length); PIN.set(m.zid, p); } return p; }
 /* ---------- pins, list ---------- */
 function popup(m){
   const z = STATS.get(String(m.zid)), pct = z ? Math.round(100 * z.booked / Math.max(1, z.total_plots)) : 0;
@@ -358,7 +362,7 @@ function draw(){
   markers.forEach(mk => mk.remove()); markers.clear();
   const pts = [];
   MAPS.filter(m => m.loc && passF(m)).forEach(m => {
-    const mk = L.marker(m.loc, {icon: pinIcon(m), title: m.city + " — " + m.area}).addTo(map).bindPopup(() => popup(m));
+    const mk = L.marker(pinLL(m), {icon: pinIcon(m), title: m.city + " — " + m.area}).addTo(map).bindPopup(() => popup(m));
     markers.set(m.i, mk); pts.push(m.loc);
   });
   if (pts.length && !draw.done && !EDIT){ map.fitBounds(pts, {padding: [40, 40]}); draw.done = 1; }
@@ -373,7 +377,7 @@ function renderList(){
 }
 function goZone(i){ const m = MAPS[i], g = geoOf(m);
   if (EDIT) return editZone(m);
-  if (g){ map.flyTo(g.c, 16, {duration: .9}); } else { const mk = markers.get(i); map.flyTo(mk.getLatLng(), 15, {duration: .8}); setTimeout(() => mk.openPopup(), 850); }
+  if (g && !EDIT){ map.flyToBounds(zoneBounds(m), {padding: [30, 30], maxZoom: 18, duration: .9}); } else if (g){ map.flyTo(g.c, 16, {duration: .9}); } else { const mk = markers.get(i); map.flyTo(mk.getLatLng(), 15, {duration: .8}); setTimeout(() => mk.openPopup(), 850); }
   if (innerWidth <= 720) $("side").classList.add("min"); }
 $("list").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) goZone(+b.dataset.go); });
 $("q").addEventListener("input", renderList);
@@ -448,7 +452,7 @@ if (EDIT){
 
 function syncUrl(){ const u = new URL(location.href); F.city ? u.searchParams.set("city", F.city) : u.searchParams.delete("city"); F.zones.size ? u.searchParams.set("zones", [...F.zones].join(",")) : u.searchParams.delete("zones"); history.replaceState(null, "", u);
   const v = new URL("/maps", location.origin); if (F.city) v.searchParams.set("city", F.city); if (F.zones.size) v.searchParams.set("zones", [...F.zones].join(",")); $("vCards").href = v.pathname + v.search; }
-function fitSel(){ const ms = MAPS.filter(m => m.loc && passF(m)); if (ms.length) map.fitBounds(ms.map(m => (m.geo && m.geo.c) || m.loc), {padding: [60, 60], maxZoom: F.zones.size ? 17 : 15}); }
+function fitSel(){ const ms = MAPS.filter(m => m.loc && passF(m)); if (ms.length) map.fitBounds(ms.map(m => pinLL(m)), {padding: [60, 60], maxZoom: F.zones.size ? 17 : 15}); }
 function renderZsel(){ $("zsel").hidden = !F.city; if (!F.city) return; const zs = MAPS.filter(m => m.city === F.city && m.loc);
   $("zCnt").textContent = F.zones.size ? F.zones.size + " من " + zs.length : "الكل";
   $("zPan").innerHTML = `<label class="zall"><input type="checkbox" data-all ${F.zones.size ? "" : "checked"}> كل المناطق</label>` + zs.map(m => `<label><input type="checkbox" data-z="${m.zid}" ${F.zones.has(m.zid) ? "checked" : ""}> ${esc(m.area)}</label>`).join(""); }
