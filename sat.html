@@ -237,7 +237,7 @@ function hideZone(m){ const e = OV.get(m.zid); if (e && e.layer && map.hasLayer(
 function refreshOverlays(){
   if (!EDIT) return refreshGround();
   return;
-  const show = map.getZoom() >= 12, b = map.getBounds().pad(.3);
+  const show = map.getZoom() >= 14, b = map.getBounds().pad(.3);
   MAPS.forEach(m => { const g = geoOf(m); if (!g || m.zid === "4803") return; if (!passF(m)) return hideZone(m); if (show && b.contains(g.c)) showZone(m); else hideZone(m); });
 }
 map.on("moveend zoomend", refreshOverlays);
