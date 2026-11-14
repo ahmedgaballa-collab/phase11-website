@@ -281,9 +281,9 @@ const LB = {
     GL.forEach(e => { if (!map.hasLayer(e.layer) || !e.labs || !e.labs.length) return; const m = e.layer.m;
       const [a, b, cc] = e.layer.corners().map(p => map.latLngToContainerPoint(p)), ux = (b.x - a.x) / m.w, uy = (b.y - a.y) / m.w, vx = (cc.x - a.x) / m.h, vy = (cc.y - a.y) / m.h, sc = Math.hypot(ux, uy), rot = Math.atan2(uy, ux);
       e.labs.forEach(L => { const f = L.f * sc, x = a.x + L.x * ux + L.y * vx, y = a.y + L.x * uy + L.y * vy; if (x < -60 || y < -60 || x > sz.x + 60 || y > sz.y + 60) return;
-        // one size for the whole zone: a plot too narrow for the full label at that size shows its number only, so sizes don't jump around
+        // labels never grow past the zone's usual size; a plot is shown with area, number and down payment whenever they fit readably
         const fm = (e.fm || L.f) * sc;
-        if (f >= 7.5 && f >= fm * .8) return AGMaps.textBlock(c, {x, y, a: L.a + rot, b: L.b, t: L.t}, Math.min(f, fm));
+        if (f >= 7.5) return AGMaps.textBlock(c, {x, y, a: L.a + rot, b: L.b, t: L.t}, Math.min(f, fm));
         // zoomed out: the plot is too small for 3 lines, so show just its number at a readable size, skipping any that would overlap
         const n = String(L.t[1]), fn = Math.max(9, Math.min(Math.max(13, fm), (L.w || L.f * 3) * sc * 1.05 / (n.length * .6 + .2))), hw = n.length * fn * .32 + 2, hh = fn * .6 + 1;
         if (hit(x - hw, y - hh, x + hw, y + hh)) return;
