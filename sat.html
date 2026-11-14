@@ -104,7 +104,7 @@ body{display:flex;flex-direction:column}
 .dlwait{position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,.45);display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px}
 body.full .topbar{display:none}
 .side{top:132px}
-@media (max-width:720px){.fbar .fb span{display:none}.side{top:auto}.tg.op span{display:none}.tg.op input{width:70px}.fbar{gap:6px;padding:6px 8px}}
+@media (max-width:720px){.side{top:auto}}
 /* calibration split */
 body.cal #map{margin-inline-end:50%}
 #imgmap{position:fixed;top:120px;bottom:0;left:0;width:50%;z-index:400;background:#fff;border-right:3px solid var(--gold)}
@@ -122,6 +122,26 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
   .tog{display:block;position:absolute;top:8px;inset-inline-start:10px;border:0;background:var(--surface-2);color:var(--ink);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;cursor:pointer}
   .brand small{display:none}
 }
+.fmore{display:contents}.fmb{display:none}
+@media (max-width:720px){
+  /* phone: header in one compact block, filters in one row, everything else behind "خيارات", list starts folded */
+  .topbar .wrap{flex-wrap:wrap;height:auto;padding:8px 10px;row-gap:6px;gap:8px}
+  .brand img{width:34px;height:34px}.brand b{font-size:15px}
+  .nav{order:3;width:100%;margin:0;padding:3px}.nav a{flex:1 0 auto;text-align:center;padding:5px 10px;font-size:13px}
+  .tg-btn span{display:none}.tg-btn{padding:0 10px;height:34px}.icon-btn{width:34px;height:34px}
+  .fbar{flex-wrap:nowrap;position:relative;gap:6px;padding:6px 8px}
+  .vw a{padding:5px 9px;font-size:12.5px}
+  #fCity{flex:1;min-width:0;height:34px}
+  .fmb{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .fmore{display:none;position:absolute;z-index:900;top:100%;left:0;right:0;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 10px 24px rgba(0,0,0,.3)}
+  .fmore.open{display:flex}
+  .fmore .sp{display:none}.fmore .fb span{display:inline}
+  .tg.op span{display:inline}.tg.op input{width:110px}
+  .zpan{width:min(280px,calc(100vw - 40px))}
+  .side{max-height:55%}
+  .side h1{font-size:15px;padding:10px 12px 2px;padding-inline-start:80px}
+  .side.min h1{padding-bottom:10px}
+}
 </style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
@@ -138,6 +158,8 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
 <div class="fbar">
   <div class="seg vw"><a href="/maps" id="vCards">🗂 الكروت</a><a class="on" href="#">🛰 القمر الصناعي</a></div>
   <select id="fCity" aria-label="المدينة"><option value="">كل المدن</option></select>
+  <button type="button" class="fb fmb" id="fMoreBtn" aria-expanded="false">⚙ خيارات</button>
+  <div class="fmore" id="fMore">
   <div class="zsel" id="zsel" hidden><button type="button" class="fb" id="zBtn">المناطق: <b id="zCnt">الكل</b> ▾</button><div class="zpan" id="zPan" hidden></div></div>
   <div class="seg" id="fSt"><button type="button" data-s="" class="on">الكل</button><button type="button" data-s="av">فيها متاح</button><button type="button" data-s="done">خلصت</button></div>
   <label class="tg op" title="شفافية الخريطة"><span>الخريطة</span><input type="range" id="fOp" min="0" max="100" value="90"></label>
@@ -147,6 +169,7 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
   <button type="button" class="fb" id="fFull" title="ملء الشاشة">⛶ <span>ملء الشاشة</span></button>
   <button type="button" class="fb" id="fPng" title="تنزيل صورة">🖼 <span>صورة</span></button>
   <button type="button" class="fb" id="fPdf" title="تنزيل PDF">📄 <span>PDF</span></button>
+  </div>
 </div>
 <div id="map" role="application" aria-label="خريطة القمر الصناعي"></div>
 <aside class="side" id="side">
@@ -355,6 +378,10 @@ function goZone(i){ const m = MAPS[i], g = geoOf(m);
 $("list").addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) goZone(+b.dataset.go); });
 $("q").addEventListener("input", renderList);
 $("tog").addEventListener("click", () => $("side").classList.toggle("min"));
+$("fMoreBtn").addEventListener("click", e => { const o = $("fMore").classList.toggle("open"); e.currentTarget.setAttribute("aria-expanded", o); });
+document.addEventListener("click", e => { if (!e.target.closest("#fMore") && !e.target.closest("#fMoreBtn")) $("fMore").classList.remove("open"); });
+if (matchMedia("(max-width:720px)").matches){ $("side").classList.add("min"); const on = document.querySelector(".nav a.on"); if (on) on.scrollIntoView({inline: "center", block: "nearest"}); }
+
 map.on("popupopen", e => { const el = e.popup.getElement(), b = el.querySelector("[data-open]"), z = el.querySelector("[data-zoom]");
   if (b) b.onclick = () => { const i = +b.dataset.open, c = MAPS[i].city; AGMaps.open(i, MAPS.filter(m => m.city === c)); };
   if (z) z.onclick = () => { map.closePopup(); goZone(+z.dataset.zoom); };
