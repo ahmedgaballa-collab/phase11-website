@@ -163,6 +163,9 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
   .grid{grid-template-columns:1fr}
   footer .cta{margin-inline-start:0}
 }
+.vtog{display:flex;gap:4px;width:max-content;margin:14px auto 0;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.vtog a{text-decoration:none;color:var(--ink-2);font-size:14px;padding:7px 16px;border-radius:999px;font-weight:600}
+.vtog a.on{background:var(--ink);color:var(--surface)}
 </style>
 </head>
 <body>
@@ -176,6 +179,7 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
 </div></header>
 
 <main class="wrap">
+  <div class="vtog"><a class="on" href="/maps">🗂 الكروت</a><a id="vSat" href="/sat">🛰 القمر الصناعي</a></div>
   <!-- ========== المدن ========== -->
   <section id="vCities">
     <div class="hero">
@@ -237,10 +241,10 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
 
 <footer><div class="wrap">
   <img src="logo.png" alt="AG">
-  <div><b>أحمد جاب الله</b> — مستشار عقاري<br><small style="color:var(--ink-3)">البيانات من موقع هيئة المجتمعات العمرانية الجديدة وبتتحدث تلقائيًا.</small></div>
+  <div><b>أحمد جاب الله</b> — مستشار عقاري<br><small style="color:var(--ink-3)">البيانات محدّثة تلقائيًا على مدار اليوم.</small></div>
   <div class="cta"><a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a><a class="btn-wa" href="https://wa.me/201009566779" target="_blank" rel="noopener">واتساب</a><a class="btn-call" href="tel:01009566779">01009566779</a></div>
 </div></footer>
-<script src="mapviewer.js?v=4"></script>
+<script src="mapviewer.js?v=15"></script>
 <script>
 const SB = "https://data.ahmedgaballah.net/rest/v1/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
@@ -280,6 +284,7 @@ function syncUrl(){
   set("amin", S.city && S.aMin); set("amax", S.city && S.aMax); set("corner", S.city && S.corner ? "1" : ""); set("garden", S.city && S.garden ? "1" : "");
   sp.delete("area");
   history.replaceState(null, "", u);
+  const v = new URL("/sat", location.origin); if (S.city) v.searchParams.set("city", S.city); if (S.city && S.zones.size) v.searchParams.set("zones", [...S.zones].join(",")); const vs = document.getElementById("vSat"); if (vs) vs.href = v.pathname + v.search;
 }
 const fitsBudget = p => !S.budget || p.d <= S.budget;
 const fitsAll = p => fitsBudget(p) && (S.aMin == null || p.a >= S.aMin) && (S.aMax == null || p.a <= S.aMax) && (!S.corner || p.c) && (!S.garden || p.g);
