@@ -241,19 +241,25 @@ async function paintZone(z){ const e = GL.get(z.zid); if (!e) return;
   const d = await AGMaps.zoneLive(z.i); if (!d.V) return; const cv = e.layer.cv; cv.width = Math.round(z.w * K); cv.height = Math.round(z.h * K);
   const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; const fs = R.labs.map(l => l.f).sort((p, q) => p - q); e.fm = fs.length ? fs[fs.length >> 1] : 0; LB.draw();  }
 // each zone's map sheet also prints the neighbouring zones; where two sheets overlap you'd see two sets of numbers.
-// So each sheet stays whole (the full map around it), except over the plots of the other zones of the same city,
-// which are hidden there and left to that zone's own sheet.
+// So each sheet shows only its own zone and the roads around it, and never over another zone's plots
+// (those are left to that zone's own sheet).
 const geoPx = (m, la, ln) => { const g = geoOf(m), r = g.r * Math.PI / 180, e = (ln - g.c[1]) * 111320 * Math.cos(la * Math.PI / 180), so = (g.c[0] - la) * 111320;
   return [(e * Math.cos(r) + so * Math.sin(r)) / g.s + m.w / 2, (-e * Math.sin(r) + so * Math.cos(r)) / g.s + m.h / 2]; };
 const pxGeo = (m, x, y) => { const g = geoOf(m), r = g.r * Math.PI / 180, u = x - m.w / 2, v = y - m.h / 2, e = g.s * (u * Math.cos(r) - v * Math.sin(r)), so = g.s * (u * Math.sin(r) + v * Math.cos(r)), la = g.c[0] - so / 111320;
   return [la, g.c[1] + e / (111320 * Math.cos(la * Math.PI / 180))]; };
 const HULL = new Map(); // zid -> ground hull of its plots
 function groundHull(o){ let h = HULL.get(o.zid); if (h === undefined){ const P = o.plots.map(p => [p[2], p[3]]); const hh = P.length >= 3 ? clipHull({p: [P.flat()]}, {r: Math.max(26, (o.r || 14) * 3)}) : null; h = hh ? hh.map(q => pxGeo(o, q[0], q[1])) : null; HULL.set(o.zid, h); } return h; }
-function maskSheet(m, el){ const q = 4, cv = document.createElement("canvas"); cv.width = Math.ceil(m.w / q); cv.height = Math.ceil(m.h / q); const c = cv.getContext("2d"); c.fillStyle = "#000"; c.fillRect(0, 0, cv.width, cv.height);
-  const poly = (h, o) => { c.beginPath(); h.forEach((g, i) => { const [x, y] = geoPx(m, g[0], g[1]); i ? c.lineTo(x / q, y / q) : c.moveTo(x / q, y / q); }); c.closePath(); c.fill(); };
-  const bb = zoneBounds(m); let any = 0; c.globalCompositeOperation = "destination-out";
-  MAPS.forEach(o => { if (o === m || o.city !== m.city || !geoOf(o) || o.zid === "4803" || !bb.intersects(zoneBounds(o))) return; const h = groundHull(o); if (h){ poly(h); any = 1; } });
-  if (!any) return; c.globalCompositeOperation = "source-over"; const own = groundHull(m); if (own) poly(own);
+function maskSheet(m, el){ const q = 4, cv = document.createElement("canvas"); cv.width = Math.ceil(m.w / q); cv.height = Math.ceil(m.h / q); const c = cv.getContext("2d"); c.fillStyle = "#000";
+  const poly = h => { c.beginPath(); h.forEach((g, i) => { const [x, y] = geoPx(m, g[0], g[1]); i ? c.lineTo(x / q, y / q) : c.moveTo(x / q, y / q); }); c.closePath(); c.fill(); };
+  // 1) only the zone itself and the streets right around it: its plots' outline, pushed out to cover the surrounding roads
+  const P = m.plots.map(p => [p[2], p[3]]), pad = Math.max(140, (m.r || 14) * 9);
+  const big = P.length >= 3 ? clipHull({p: [P.flat()]}, {r: pad / 2.2}) : null;
+  if (big) { c.beginPath(); big.forEach((g, i) => i ? c.lineTo(g[0] / q, g[1] / q) : c.moveTo(g[0] / q, g[1] / q)); c.closePath(); c.fill(); }
+  else { const [x, y] = P.length ? P[0] : [m.w / 2, m.h / 2]; c.beginPath(); c.arc(x / q, y / q, (pad + 60) / q, 0, 7); c.fill(); }
+  // 2) minus other zones' plots (their own sheet shows them), 3) own plots always on top
+  const bb = zoneBounds(m); c.globalCompositeOperation = "destination-out";
+  MAPS.forEach(o => { if (o === m || o.city !== m.city || !geoOf(o) || o.zid === "4803" || !bb.intersects(zoneBounds(o))) return; const h = groundHull(o); if (h) poly(h); });
+  c.globalCompositeOperation = "source-over"; const own = groundHull(m); if (own) poly(own);
   const u = "url(" + cv.toDataURL("image/png") + ")"; el.style.maskImage = el.style.webkitMaskImage = u; el.style.maskSize = el.style.webkitMaskSize = "100% 100%"; el.style.maskRepeat = el.style.webkitMaskRepeat = "no-repeat"; }
 function clipHull(V, z){ const P = []; V.p.forEach(p => { if (p) for (let i = 0; i < p.length; i += 2) P.push([p[i], p[i + 1]]); }); if (P.length < 3) return null;
   P.sort((a, b) => a[0] - b[0] || a[1] - b[1]); const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]), lo = [], up = [];
