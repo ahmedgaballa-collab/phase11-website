@@ -66,7 +66,7 @@
 (function () {
   var orig = window.fetch;
   if (!orig) return;
-  var SB = /supabase\.co\/rest\/v1\//, cache = {}, keys = [], MAX_AGE = 60000;
+  var SB = /(supabase\.co|data\.ahmedgaballah\.net)\/rest\/v1\//, cache = {}, keys = [], MAX_AGE = 60000;
   function visible() {
     if (!document.hidden) return Promise.resolve();
     return new Promise(function (ok) {

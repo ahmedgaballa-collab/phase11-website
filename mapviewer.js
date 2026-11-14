@@ -46,11 +46,9 @@
     ".agmv-st i{width:13px;height:13px;border-radius:3px;background:#C8282C;display:inline-block;border:1px solid #fff}" +
     ".agmv.hide-res .agmv-layer canvas{display:none}" +
     ".agmv-lbl{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
-    ".agmv-nc{position:absolute;top:12px;left:12px;width:46px;height:46px;pointer-events:none;z-index:3;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}.agmv-nc svg{width:100%;height:100%;transition:transform .3s}" +
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
-    ".agmv [hidden]{display:none !important}" +
     "@media(max-width:560px){.agmv .agmv-txt{display:none}.agmv button,.agmv a.agmv-b{padding:0 11px}}";
   function injectCss() {
     if (document.getElementById("agmv-css")) return;
@@ -58,7 +56,7 @@
   }
 
   /* ---------- viewer ---------- */
-  var ncEl, locA, root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
+  var root, stage, layer, svg, stEl, resB, img, titleB, titleS, loadEl, hintEl, dlA, waA, prevB, nextB;
   var natW = 0, natH = 0, list = [], pos = 0, s = 1, tx = 0, ty = 0, minS = 1, pointers = {}, pinch = null, drag = null, lastTap = 0, pushed = false;
 
   function build() {
@@ -68,16 +66,16 @@
       '<div class="agmv-top"><button type="button" data-a="close" aria-label="إغلاق">✕</button>' +
       '<div class="agmv-t"><b></b><small></small></div>' +
       '<button type="button" data-a="prev" aria-label="الخريطة اللي قبلها">›</button><button type="button" data-a="next" aria-label="الخريطة اللي بعدها">‹</button></div>' +
-      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><canvas class="agmv-lbl"></canvas><div class="agmv-nc" hidden title="اتجاه الشمال"><svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="rgba(11,31,63,.82)" stroke="#E3C27A" stroke-width="1.5"/><path d="M20 5 L26 21 L20 18 L14 21Z" fill="#E3502E"/><path d="M20 35 L26 21 L20 24 L14 21Z" fill="#fff"/><text x="20" y="15.5" text-anchor="middle" font-size="7" font-weight="800" fill="#fff" font-family="Arial">N</text></svg></div><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
+      '<div class="agmv-stage"><div class="agmv-layer"><img alt=""><canvas></canvas></div><canvas class="agmv-lbl"></canvas><div class="agmv-load">جاري تحميل الخريطة بجودة عالية…</div><div class="agmv-hint">كبّر بصباعين أو دبل كليك</div></div>' +
       '<div class="agmv-bot"><button type="button" data-a="in" aria-label="تكبير">＋</button><button type="button" data-a="out" aria-label="تصغير">－</button>' +
       '<span class="agmv-st" hidden><i></i><span></span></span><button type="button" data-a="res" hidden>إخفاء المحجوز</button><button type="button" data-a="fit"><span>⤢</span><span class="agmv-txt">الخريطة كاملة</span></button>' +
-      '<a class="agmv-b agmv-loc" target="_blank" rel="noopener" hidden><span>📍</span><span class="agmv-txt">اللوكيشن</span></a><a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
+      '<a class="agmv-b" data-a="dl" download><span>⬇</span><span class="agmv-txt">تحميل</span></a>' +
       '<a class="agmv-b agmv-wa" target="_blank" rel="noopener"><span>واتساب</span><span class="agmv-txt">— اسأل عن المنطقة دي</span></a></div>';
     document.body.appendChild(root);
-    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); lbl = stage.querySelector(".agmv-lbl"); ncEl = stage.querySelector(".agmv-nc"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
+    stage = root.querySelector(".agmv-stage"); layer = stage.querySelector(".agmv-layer"); img = layer.querySelector("img"); svg = layer.querySelector("canvas"); lbl = stage.querySelector(".agmv-lbl"); stEl = root.querySelector(".agmv-st"); resB = root.querySelector('[data-a="res"]');
     titleB = root.querySelector(".agmv-t b"); titleS = root.querySelector(".agmv-t small");
     loadEl = root.querySelector(".agmv-load"); hintEl = root.querySelector(".agmv-hint");
-    dlA = root.querySelector('[data-a="dl"]'); locA = root.querySelector(".agmv-loc"); waA = root.querySelector(".agmv-wa");
+    dlA = root.querySelector('[data-a="dl"]'); waA = root.querySelector(".agmv-wa");
     prevB = root.querySelector('[data-a="prev"]'); nextB = root.querySelector('[data-a="next"]');
     root.addEventListener("click", function (e) {
       var b = e.target.closest("[data-a]"); if (!b) return;
@@ -163,7 +161,7 @@
 
     /* booked plots come live from Supabase (same source as /search and /dashboard, synced every 5 min); status.json is only a fallback */
   var STATUS = "status.json";
-  var SB_URL = "https://mupmkecxgnickmbdvlno.supabase.co/rest/v1/";
+  var SB_URL = "https://data.ahmedgaballah.net/rest/v1/";
   var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
   // Live plot data for a city from the DB: key "block|plot" -> {av: offered now, a: area m², dp: down payment}.
   // A plot is "available" only if the DB lists it as available & active; anything else is booked — this also covers
@@ -244,15 +242,10 @@
       A.reg[id] = px;
     });
     // pass 2: unclaimed plot-coloured pixels next to a plot's region join that plot (corners cut off by the nearest-centre rule)
-    // only corners: stay inside this region's own bounding box (+3px), so colour never runs into a neighbouring plot
-    P.forEach(function (p, id) { var px = A.reg[id]; if (!px || !px.length) return;
-      var bx0 = W, bx1 = 0, by0 = H, by1 = 0; px.forEach(function (q) { var x = q % W, y = (q / W) | 0; if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; });
-      bx0 -= 3; bx1 += 3; by0 -= 3; by1 += 3;
-      var st = px.slice(), lim = Math.round(px.length * 1.25) + 50;
+    P.forEach(function (p, id) { var px = A.reg[id]; if (!px) return; var st = px.slice(), lim = px.length * 2 + 2000;
       while (st.length && px.length < lim) { var q = st.pop(), qx = q % W;
         for (var k = 0; k < 4; k++) { var n = k === 0 ? q - 1 : k === 1 ? q + 1 : k === 2 ? q - W : q + W;
           if ((k === 0 && qx === 0) || (k === 1 && qx === W - 1) || n < 0 || n >= N || own[n] !== -1 || !plotCol(n * 4)) continue;
-          var nx = n % W, ny = (n / W) | 0; if (nx < bx0 || nx > bx1 || ny < by0 || ny > by1) continue;
           own[n] = id; px.push(n); st.push(n); } } });
     // label = holes (text) inside each region: pixels enclosed by the same plot on all 4 sides
     P.forEach(function (p, id) { var px = A.reg[id]; if (!px || !px.length) return;
@@ -300,36 +293,10 @@
 
   var LBL = [], mctx = document.createElement("canvas").getContext("2d");   // labels currently drawn crisp on the overlay: {x, y, a, f, t:[area, no, dp], b: booked}
   function fmt(n) { n = Number(n); if (!isFinite(n)) return ""; return n.toLocaleString("en-US", { maximumFractionDigits: 2 }); }
-  /* prebuilt vectors (scripts/build_geo.py): plot outlines + label boxes per zone — no image analysis on the phone */
-  var vecCache = {};
-  function loadVec(it) {
-    if (!vecCache[it.zid]) vecCache[it.zid] = fetch("maps/v/" + it.zid + ".json?v=" + VEC_V).then(function (r) { if (!r.ok) throw 0; return r.json(); }).catch(function () { return null; });
-    return vecCache[it.zid];
-  }
-  var VEC_V = 1;
-  // draw plot fills (booked red / available plot colour) on ctx in image px * k; returns {n, labs}
-  function paintVec(ctx, it, V, st, k, onlyPlots) {
-    var Y = "rgb(" + V.Y.join(",") + ")", n = 0, labs = [];
-    it.plots.forEach(function (p, i) {
-      var b = st.booked(p), inf = st.info(p), poly = V.p[i], L = V.l[i]; if (b) n++;
-      if (poly) { ctx.beginPath(); for (var j = 0; j < poly.length; j += 2) { var x = poly[j] * k, y = poly[j + 1] * k; j ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath();
-        ctx.fillStyle = b ? "#C8282C" : Y; ctx.fill(); if (onlyPlots) { ctx.lineWidth = Math.max(1, 1.6 * k); ctx.strokeStyle = "rgba(40,40,40,.55)"; ctx.stroke(); } }
-      else if (b) { ctx.fillStyle = "rgba(200,40,44,.85)"; ctx.beginPath(); ctx.arc(p[2] * k, p[3] * k, Math.max(8, it.r || 14) * .9 * k, 0, 7); ctx.fill(); }
-      if (!L) return;
-      var tt = inf ? [fmt(inf.a), String(p[0]), fmt(inf.dp)] : ["", String(p[0]), ""], ff = L[3];
-      mctx.font = "bold 78px Helvetica, Arial, sans-serif"; var wm = Math.max(mctx.measureText(tt[0]).width, mctx.measureText(tt[2]).width) / 100;
-      mctx.font = "bold 100px Helvetica, Arial, sans-serif"; wm = Math.max(wm, mctx.measureText(tt[1]).width / 100);
-      if (wm > 0 && ff * wm > L[4] * 1.08) ff = L[4] * 1.08 / wm;
-      labs.push({ x: L[0], y: L[1], a: L[2], f: ff, b: b, t: tt, w: L[4] });
-    });
-    return { n: n, labs: labs };
-  }
-  function paintMap(it, im, st, cv) {
-    var own = !cv; cv = cv || svg;
-    var A = analyze(it, im), W = A.W, H = A.H; cv.width = W; cv.height = H; var labs = [];
-    var ctx = cv.getContext("2d"); ctx.clearRect(0, 0, W, H);
-    if (own) LBL = labs;
-    if (!A.Y) return own ? 0 : { n: 0, labs: labs, A: A };
+  function paintMap(it, im, st) {
+    var A = analyze(it, im), W = A.W, H = A.H; svg.width = W; svg.height = H; LBL = [];
+    var ctx = svg.getContext("2d"); ctx.clearRect(0, 0, W, H);
+    if (!A.Y) return 0;
     var out = ctx.createImageData(W, H), od = out.data, Y = A.Y, n = 0;
     function put(q, c) { var j = q * 4; od[j] = c[0]; od[j + 1] = c[1]; od[j + 2] = c[2]; od[j + 3] = 255; }
     var RED = [200, 40, 44], WH = [255, 255, 255];
@@ -349,67 +316,12 @@
         mctx.font = "bold 78px Helvetica, Arial, sans-serif"; var wmax = Math.max(mctx.measureText(tt[0]).width, mctx.measureText(tt[2]).width) / 100;
         mctx.font = "bold 100px Helvetica, Arial, sans-serif"; wmax = Math.max(wmax, mctx.measureText(tt[1]).width / 100);
         if (wmax > 0 && ff * wmax > L.w * 1.08) ff = L.w * 1.08 / wmax;
-        labs.push({ x: L.x, y: L.y, a: L.a, f: ff, b: b, t: tt });
+        LBL.push({ x: L.x, y: L.y, a: L.a, f: ff, b: b, t: tt });
       } else if (b) L.holes.forEach(function (q) { put(q, WH); });
     });
     var o = document.createElement("canvas"); o.width = W; o.height = H; o.getContext("2d").putImageData(out, 0, 0); ctx.drawImage(o, 0, 0);
-    if (!own) return { n: n, labs: labs, A: A };
     drawLabels();
     return n;
-  }
-  function textBlock(c, L, f) {
-    c.save(); c.translate(L.x, L.y); if (L.a) c.rotate(L.a); c.textAlign = "center"; c.textBaseline = "middle";
-    c.fillStyle = L.b ? "#fff" : "#16325C"; c.font = "bold " + (f * .78).toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[0], 0, -f * .95);
-    c.fillStyle = L.b ? "#fff" : "#C8102E"; c.font = "bold " + f.toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[1], 0, 0);
-    c.fillStyle = L.b ? "#fff" : "#16325C"; c.font = "bold " + (f * .78).toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[2], 0, f * .95);
-    c.restore();
-  }
-  /* live map for the satellite page: the zone (cropped around its plots) with booked plots red and crisp labels,
-     plus its scale in metres per image pixel (from the plots' real areas vs their size on the image) */
-  function overlay(i, K, full) {
-    return load().then(function (all) {
-      var it = all[i]; K = K || 2;
-      return Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
-        var cv = document.createElement("canvas"), R = paintMap(it, v[1], v[0], cv), A = R.A, r = Math.max(8, it.r || 14);
-        var xs = it.plots.map(function (p) { return p[2]; }), ys = it.plots.map(function (p) { return p[3]; });
-        var bx0 = Math.min.apply(null, xs), bx1 = Math.max.apply(null, xs), by0 = Math.min.apply(null, ys), by1 = Math.max.apply(null, ys);
-        var m = Math.max(r * 6, (bx1 - bx0 + by1 - by0) * .08);
-        var x0 = Math.max(0, Math.round(bx0 - m)), y0 = Math.max(0, Math.round(by0 - m)), x1 = Math.min(it.w, Math.round(bx1 + m)), y1 = Math.min(it.h, Math.round(by1 + m));
-        if (full) { x0 = 0; y0 = 0; x1 = it.w; y1 = it.h; }
-        var o = document.createElement("canvas"); o.width = (x1 - x0) * K; o.height = (y1 - y0) * K; var c = o.getContext("2d");
-        // keep only the zone itself: clip to the outline (convex hull) of its plots, pushed out a little
-        var P = it.plots.map(function (p) { return [p[2], p[3]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
-        var cr = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }, lo = [], up = [];
-        P.forEach(function (p) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); });
-        P.slice().reverse().forEach(function (p) { while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); });
-        var hull = lo.slice(0, -1).concat(up.slice(0, -1)), hx = 0, hy = 0; hull.forEach(function (p) { hx += p[0]; hy += p[1]; }); hx /= hull.length || 1; hy /= hull.length || 1;
-        var pad = Math.max(r * 9, 140);
-        c.imageSmoothingQuality = "high"; c.drawImage(v[1], x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height); c.drawImage(cv, x0, y0, x1 - x0, y1 - y0, 0, 0, o.width, o.height);
-        c.setTransform(K, 0, 0, K, -x0 * K, -y0 * K); R.labs.forEach(function (L) { textBlock(c, L, L.f); }); c.setTransform(1, 0, 0, 1, 0, 0);
-        // mask = outline of the plots grown by `pad` (fill + thick round stroke), so even a row of 2-3 plots keeps its surroundings
-        var mk = document.createElement("canvas"); mk.width = o.width; mk.height = o.height; var mc = mk.getContext("2d");
-        mc.setTransform(K, 0, 0, K, -x0 * K, -y0 * K); mc.beginPath();
-        (hull.length ? hull : P).forEach(function (p, k) { k ? mc.lineTo(p[0], p[1]) : mc.moveTo(p[0], p[1]); }); mc.closePath();
-        mc.fillStyle = mc.strokeStyle = "#000"; mc.lineJoin = mc.lineCap = "round"; mc.lineWidth = pad * 2; mc.fill(); mc.stroke();
-        if (!full) {
-          c.globalCompositeOperation = "destination-in"; c.drawImage(mk, 0, 0); c.globalCompositeOperation = "source-over";
-          // drop the paper background (and the faint watermark on it) so the ground shows through and the whole zone,
-          // with its roads and red border, sits on the satellite without white patches; also drop the title bar
-          var id = c.getImageData(0, 0, o.width, o.height), dd = id.data, hist = {}, best = 0, PB = null;
-          for (var i = 0; i < dd.length; i += 4 * 13) { if (!dd[i + 3]) continue; var R0 = dd[i], G0 = dd[i + 1], B0 = dd[i + 2];
-            if (R0 + G0 + B0 > 640) { var hk = (R0 >> 2) + "," + (G0 >> 2) + "," + (B0 >> 2); hist[hk] = (hist[hk] || 0) + 1; if (hist[hk] > best) { best = hist[hk]; PB = [R0, G0, B0]; } } }
-          var top = Math.max(0, (it.h * 0.105 - y0) * K);
-          for (var q = 0, n = dd.length / 4; q < n; q++) { var j = q * 4; if (!dd[j + 3]) continue;
-            if (q / o.width < top) { dd[j + 3] = 0; continue; }
-            if (PB) { var dr = dd[j] - PB[0], dg = dd[j + 1] - PB[1], db = dd[j + 2] - PB[2], dist = Math.sqrt(dr * dr + dg * dg + db * db);
-              if (dist < 16) dd[j + 3] = 0; else if (dist < 34) dd[j + 3] = Math.round(dd[j + 3] * (dist - 16) / 18); } }
-          c.putImageData(id, 0, 0);
-        }
-        var ks = []; it.plots.forEach(function (p, id) { var inf = v[0].info(p), px = A.reg[id]; if (inf && inf.a > 0 && px && px.length > 30) ks.push(Math.sqrt(inf.a / px.length)); });
-        ks.sort(function (a, b) { return a - b; });
-        return { canvas: o, crop: [x0, y0, x1, y1], mpp: ks.length ? ks[ks.length >> 1] * .93 : null, booked: R.n, total: it.plots.length, it: it };
-      });
-    });
   }
   // crisp labels: redrawn in screen pixels on every pan/zoom, so they stay sharp at any zoom
   var lbl = null;
@@ -434,12 +346,9 @@
     if (!it.plots || !it.plots.length) return;
     // keep the map live while it's open: re-check every 2 minutes
     resTimer = setInterval(function () { if (list[pos] === it && root.style.display !== "none") { delete cityData[it.city]; drawReserved(it, true); } else clearInterval(resTimer); }, 120000);
-    Promise.all([loadStatus(it), loadVec(it)]).then(function (v) {
+    Promise.all([loadStatus(it), fullImg(it.file)]).then(function (v) {
       if (list[pos] !== it) return;
-      if (v[1]) { svg.width = it.w; svg.height = it.h; var cx = svg.getContext("2d"); cx.clearRect(0, 0, it.w, it.h); var R = paintVec(cx, it, v[1], v[0], 1); LBL = R.labs; drawLabels(); return R.n; }
-      return fullImg(it.file).then(function (im) { return list[pos] === it ? paintMap(it, im, v[0]) : null; });
-    }).then(function (n) {
-      if (n == null || list[pos] !== it) return;
+      var n = paintMap(it, v[1], v[0]);
       stEl.hidden = false; resB.hidden = !n;
       stEl.querySelector("span").textContent = n ? ("محجوز " + n + " من " + it.plots.length + " · متاح " + (it.plots.length - n)) : ("كل القطع متاحة (" + it.plots.length + ")");
     }).catch(function (e) { console.warn("map overlay", e); });
@@ -449,8 +358,6 @@
     var it = list[pos];
     titleB.textContent = it.area; titleS.textContent = it.city + (list.length > 1 ? "  ·  " + (pos + 1) + " من " + list.length : "");
     prevB.style.visibility = nextB.style.visibility = list.length > 1 ? "visible" : "hidden";
-    if (it.geo) { ncEl.hidden = false; ncEl.firstChild.style.transform = "rotate(" + (-it.geo.r) + "deg)"; } else ncEl.hidden = true;
-    if (it.loc) { locA.hidden = false; locA.href = "https://www.google.com/maps?q=" + it.loc[0] + "," + it.loc[1]; } else locA.hidden = true;
     dlA.href = it.file; dlA.setAttribute("download", (it.city + " - " + it.area).replace(/[\\/:*?"<>|]/g, "") + ".webp");
     waA.href = "https://wa.me/" + WA + "?text=" + encodeURIComponent("مساء الخير، عايز أستفسر عن قطع " + it.area + " في " + it.city + " (المرحلة 11)");
     loadEl.style.display = "block"; hintEl.style.opacity = 1;
@@ -480,28 +387,5 @@
   function hide() { if (root) root.style.display = "none"; document.documentElement.style.overflow = ""; }
   function close() { if (pushed) { history.back(); } else hide(); }
 
-  // offline build helper: plot regions as an id image (R,G = id+1) + label boxes, for scripts/build_geo.py
-  function exportAnalysis(i) {
-    return load().then(function (all) { var it = all[i]; return fullImg(it.file).then(function (im) {
-      var A = analyze(it, im), W = A.W, H = A.H, c = document.createElement("canvas"); c.width = W; c.height = H;
-      var x = c.getContext("2d"), d = x.createImageData(W, H), dd = d.data;
-      A.reg.forEach(function (px, id) { if (!px) return; var v = id + 1; px.forEach(function (q) { var j = q * 4; dd[j] = v & 255; dd[j + 1] = v >> 8; dd[j + 2] = 0; dd[j + 3] = 255; }); });
-      x.putImageData(d, 0, 0);
-      return { png: c.toDataURL("image/png"), labs: A.lab.map(function (L) { return L ? [+L.x.toFixed(1), +L.y.toFixed(1), +L.a.toFixed(4), +L.f.toFixed(2), +L.w.toFixed(1)] : null; }), Y: A.Y };
-    }); });
-  }
-  // live data for a zone: vectors + booking status (satellite page draws them itself)
-  function zoneLive(i) { return load().then(function (all) { var it = all[i]; return Promise.all([loadVec(it), loadStatus(it)]).then(function (v) { return { it: it, V: v[0], st: v[1] }; }); }); }
-  // full-resolution picture of a zone with live colours and crisp labels (for PNG / PDF download)
-  function renderFull(i, plotsOnly) {
-    return zoneLive(i).then(function (z) { return fullImg(z.it.file).then(function (im) {
-      var it = z.it, c = document.createElement("canvas"); c.width = it.w; c.height = it.h; var x = c.getContext("2d");
-      x.fillStyle = "#fff"; x.fillRect(0, 0, it.w, it.h); if (!plotsOnly) x.drawImage(im, 0, 0, it.w, it.h);
-      var R = z.V ? paintVec(x, it, z.V, z.st, 1, plotsOnly) : { n: 0, labs: [] };
-      R.labs.forEach(function (L) { textBlock(x, L, L.f); });
-      return { canvas: c, it: it, n: R.n };
-    }); });
-  }
-  window.AGMaps = { load: load, find: find, open: open, norm: norm, overlay: overlay, _export: exportAnalysis,
-    zoneLive: zoneLive, paintVec: paintVec, textBlock: textBlock, renderFull: renderFull, refresh: function (city) { delete cityData[city]; } };
+  window.AGMaps = { load: load, find: find, open: open, norm: norm };
 })();
