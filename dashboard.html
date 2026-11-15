@@ -497,7 +497,7 @@ async function loadDay(dayStr){
   dayStr = allocOnOrBefore(dayStr);
   viewDay = dayStr;
   const isCur = dayStr === cur;
-  $("dPick").value = dayStr; $("dPick").max = cairoDate(Date.now());
+  $("dPick").value = dayStr; $("dPick").max = cairoDate(Date.now()); $("dPick").min = cairoDate(Date.now() - 7 * 864e5);
   $("dNext").disabled = isCur; $("dPrev").disabled = dayStr <= $("dPick").min;
   $("dayTitle").textContent = (isCur && dayStr === cairoDate(Date.now())) ? "حجوزات النهارده"
     : "حجوزات تخصيص " + dayLabel(dayStr, {weekday:"long", day:"numeric", month:"long"});
@@ -593,7 +593,7 @@ async function load(){
 
 $("dPrev").addEventListener("click", () => loadDay(prevAlloc(viewDay || currentAlloc())));
 $("dNext").addEventListener("click", () => loadDay(nextAlloc(viewDay || currentAlloc())));
-$("dPick").addEventListener("change", e => { if (e.target.value) loadDay(e.target.value); });
+$("dPick").addEventListener("change", e => { const v = e.target.value; if (v) loadDay(v < e.target.min ? e.target.min : v); });
 
 /* theme */
 function paintThemeBtn(){

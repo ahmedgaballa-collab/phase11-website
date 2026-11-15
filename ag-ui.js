@@ -114,3 +114,21 @@
   s.src = "/_vercel/insights/script.js";
   document.head.appendChild(s);
 })();
+
+/* 5) rights line (2026-11-15): added at the bottom of every page's footer */
+(function () {
+  function add() {
+    if (document.querySelector(".ag-rights")) return;
+    var f = document.querySelector("footer");
+    var d = document.createElement("div");
+    d.className = "ag-rights";
+    d.innerHTML = "© " + new Date().getFullYear() + " أحمد جاب الله — جميع الحقوق محفوظة";
+    var s = document.createElement("style");
+    s.textContent = ".ag-rights{width:100%;flex-basis:100%;text-align:center;font-size:12px;line-height:1.7;opacity:.75;" +
+      "padding:10px 16px 14px;border-top:1px solid rgba(127,127,127,.18);margin-top:6px}" +
+      "@media (max-width:700px){.ag-rights{padding-bottom:84px}}";
+    document.head.appendChild(s);
+    if (f) f.appendChild(d); else document.body.appendChild(d);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add); else add();
+})();
