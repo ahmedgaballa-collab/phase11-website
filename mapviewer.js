@@ -46,6 +46,7 @@
     ".agmv-st i{width:13px;height:13px;border-radius:3px;background:#C8282C;display:inline-block;border:1px solid #fff}" +
     ".agmv-lbl{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
     ".agmv-nc{position:absolute;top:12px;left:12px;width:46px;height:46px;pointer-events:none;z-index:3;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}.agmv-nc svg{width:100%;height:100%;transition:transform .3s}" +
+    ".agmv-b.busy{opacity:.5;pointer-events:none}" +
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
     ".agmv-hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:6px 12px;border-radius:999px;font-size:12.5px;pointer-events:none;transition:opacity .6s}" +
     ".agmv-load{position:absolute;top:12px;left:50%;transform:translateX(-50%);font-size:12.5px;background:rgba(0,0,0,.55);padding:4px 12px;border-radius:999px}" +
@@ -81,6 +82,7 @@
     root.addEventListener("click", function (e) {
       var b = e.target.closest("[data-a]"); if (!b) return;
       var a = b.getAttribute("data-a");
+      if (a === "dl") { e.preventDefault(); dlLive(); return; }
       if (a === "close") close();
       else if (a === "prev") go(-1);
       else if (a === "next") go(1);
@@ -435,6 +437,15 @@
     svg.width = it.w; svg.height = it.h; var cx = svg.getContext("2d"); cx.clearRect(0, 0, it.w, it.h);
     LBL = paintVec(cx, it, cur.V, st, 1).labs; drawLabels();
     var n = 0; it.plots.forEach(function (p) { if (cur.st.booked(p)) n++; }); return n;
+  }
+  // ⬇ downloads the live map (booked colours as shown, sharp numbers) as a PNG; falls back to the plain sheet
+  function dlLive() {
+    var it = list[pos], name = (it.city + " - " + it.area).replace(/[\\/:*?"<>|]/g, "");
+    if (!it.plots || !it.plots.length) { var a0 = document.createElement("a"); a0.href = it.file; a0.download = name + ".webp"; a0.click(); return; }
+    dlA.classList.add("busy");
+    load().then(function (all) { return renderFull(all.indexOf(it), false, root.classList.contains("hide-res")); }).then(function (R) {
+      R.canvas.toBlob(function (bl) { var a = document.createElement("a"); a.href = URL.createObjectURL(bl); a.download = name + ".png"; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 3000); dlA.classList.remove("busy"); }, "image/png");
+    }).catch(function () { dlA.classList.remove("busy"); var a1 = document.createElement("a"); a1.href = it.file; a1.download = name + ".webp"; a1.click(); });
   }
   function drawReserved(it, fresh) {
     if (!fresh) { cur = null; svg.width = 1; svg.height = 1; LBL = []; drawLabels(); stEl.hidden = true; resB.hidden = true; }
