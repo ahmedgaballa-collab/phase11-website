@@ -443,7 +443,7 @@
     var it = list[pos], name = (it.city + " - " + it.area).replace(/[\\/:*?"<>|]/g, "");
     if (!it.plots || !it.plots.length) { var a0 = document.createElement("a"); a0.href = it.file; a0.download = name + ".webp"; a0.click(); return; }
     dlA.classList.add("busy");
-    load().then(function (all) { return renderFull(all.indexOf(it), false, root.classList.contains("hide-res")); }).then(function (R) {
+    load().then(function (all) { return renderFull(all.findIndex(function (m) { return m.zid === it.zid; }), false, root.classList.contains("hide-res")); }).then(function (R) {
       R.canvas.toBlob(function (bl) { var a = document.createElement("a"); a.href = URL.createObjectURL(bl); a.download = name + ".png"; document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 3000); dlA.classList.remove("busy"); }, "image/png");
     }).catch(function () { dlA.classList.remove("busy"); var a1 = document.createElement("a"); a1.href = it.file; a1.download = name + ".webp"; a1.click(); });
   }
