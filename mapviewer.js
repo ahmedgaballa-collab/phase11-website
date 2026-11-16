@@ -493,11 +493,16 @@
   // live data for a zone: vectors + booking status (satellite page draws them itself)
   function zoneLive(i) { return load().then(function (all) { var it = all[i]; return Promise.all([loadVec(it), loadStatus(it)]).then(function (v) { return { it: it, V: v[0], st: v[1] }; }); }); }
   // full-resolution picture of a zone with live colours and crisp labels (for PNG / PDF download)
-  function renderFull(i, plotsOnly) {
+  /* full live map for download: drawn at up to 2x the sheet's size so the numbers stay sharp when zoomed in the PNG/PDF
+     (kept under ~14 MP, the largest canvas phones allow). noBooked = all plots in the map's own colour. */
+  function renderFull(i, plotsOnly, noBooked) {
     return zoneLive(i).then(function (z) { return fullImg(z.it.file).then(function (im) {
-      var it = z.it, c = document.createElement("canvas"); c.width = it.w; c.height = it.h; var x = c.getContext("2d");
+      var it = z.it, k = Math.min(2, Math.sqrt(14e6 / (it.w * it.h))), c = document.createElement("canvas");
+      c.width = Math.round(it.w * k); c.height = Math.round(it.h * k); var x = c.getContext("2d");
+      x.imageSmoothingQuality = "high"; x.scale(k, k);
       x.fillStyle = "#fff"; x.fillRect(0, 0, it.w, it.h); if (!plotsOnly) x.drawImage(im, 0, 0, it.w, it.h);
-      var R = z.V ? paintVec(x, it, z.V, z.st, 1, plotsOnly) : { n: 0, labs: [] };
+      var st = noBooked ? { booked: function () { return false; }, info: z.st.info } : z.st;
+      var R = z.V ? paintVec(x, it, z.V, st, 1, plotsOnly) : { n: 0, labs: [] };
       R.labs.forEach(function (L) { textBlock(x, L, L.f); });
       return { canvas: c, it: it, n: R.n };
     }); });

@@ -181,7 +181,7 @@ body.cal .side{inset-inline-end:auto;inset-inline-start:12px;top:132px;width:250
   <div class="list" id="list"></div>
 </aside>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="mapviewer.js?v=15"></script>
+<script src="mapviewer.js?v=16"></script>
 <script>
 const SB = "https://data.ahmedgaballah.net/rest/v1/";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im11cG1rZWN4Z25pY2ttYmR2bG5vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5OTY3NTAsImV4cCI6MjEwNTU3Mjc1MH0.Y5fHBT7cRfYB-CG2v674l_FH7kYs7ZQjE5bd5bQ0AzI";
@@ -255,14 +255,14 @@ const Ground = L.Layer.extend({
   corners(){ const m = this.m; return corners(geoOf(m), {it: m, crop: [0, 0, m.w, m.h]}); },
   _up(){ const map = this._m; if (!map) return; const [a, b, c] = this.corners().map(p => map.latLngToLayerPoint(p)), w = this.m.w, h = this.m.h;
     this.el.style.transform = `matrix(${(b.x - a.x) / w},${(b.y - a.y) / w},${(c.x - a.x) / h},${(c.y - a.y) / h},${a.x},${a.y})`;
-    const hi = map.getZoom() >= 17; if (hi !== this.hi){ this.hi = hi; this.img.src = `maps/t/${hi ? "" : "s/"}${this.m.zid}.webp?v=2`; } },
-  style(){ this.img.style.opacity = UI.only ? 0 : UI.op; this.cv.style.display = UI.bk ? "" : "none"; }
+    const hi = Math.hypot(b.x - a.x, b.y - a.y) > 1000; if (hi !== this.hi){ this.hi = hi; this.img.src = `maps/t/${hi ? "" : "s/"}${this.m.zid}.webp?v=2`; } },
+  style(){ this.img.style.opacity = UI.only ? 0 : UI.op; }
 });
 const GL = new Map(); // zid -> {layer, labs, n}
 const K = .5; // plot canvas at half the map resolution
 async function paintZone(z){ const e = GL.get(z.zid); if (!e) return;
   const d = await AGMaps.zoneLive(z.i); if (!d.V) return; const cv = e.layer.cv; cv.width = Math.round(z.w * K); cv.height = Math.round(z.h * K);
-  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const R = AGMaps.paintVec(x, z, d.V, d.st, K, UI.only); e.labs = R.labs; e.n = R.n; const fs = R.labs.map(l => l.f).sort((p, q) => p - q); e.fm = fs.length ? fs[fs.length >> 1] : 0; LB.draw();  }
+  const x = cv.getContext("2d"); x.clearRect(0, 0, cv.width, cv.height); const st = UI.bk ? d.st : {booked: () => false, info: d.st.info}; const R = AGMaps.paintVec(x, z, d.V, st, K, UI.only); e.labs = R.labs; e.n = R.n; const fs = R.labs.map(l => l.f).sort((p, q) => p - q); e.fm = fs.length ? fs[fs.length >> 1] : 0; LB.draw();  }
 // each zone's map sheet also prints the neighbouring zones; where two sheets overlap you'd see two sets of numbers.
 // So each sheet shows only its own zone (inside its dashed border) and never over another zone's plots.
 const geoPx = (m, la, ln) => { const g = geoOf(m), r = g.r * Math.PI / 180, e = (ln - g.c[1]) * 111320 * Math.cos(la * Math.PI / 180), so = (g.c[0] - la) * 111320;
@@ -304,7 +304,7 @@ const LB = {
     map.on("move zoom viewreset resize moveend zoomend", () => this.draw()); map.on("zoomstart", () => { this.cv.style.visibility = "hidden"; }); map.on("zoomend", () => { this.cv.style.visibility = ""; }); },
   draw(){ const cv = this.cv; if (!cv) return; const sz = map.getSize(), dpr = window.devicePixelRatio || 1;
     if (cv.width !== sz.x * dpr || cv.height !== sz.y * dpr){ cv.width = sz.x * dpr; cv.height = sz.y * dpr; cv.style.width = sz.x + "px"; cv.style.height = sz.y + "px"; }
-    const c = cv.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); if (!UI.bk || map.getZoom() < 14) return;
+    const c = cv.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, cv.width, cv.height); if (map.getZoom() < 14) return;
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
     const G = new Map(), CS = 24, boxes = [];
     const hit = (x0, y0, x1, y1) => { const ks = []; for (let i = Math.floor(x0 / CS); i <= Math.floor(x1 / CS); i++) for (let j = Math.floor(y0 / CS); j <= Math.floor(y1 / CS); j++) { const k = i + "," + j; ks.push(k); const l = G.get(k); if (l) for (const b of l) if (b[0] < x1 && b[2] > x0 && b[1] < y1 && b[3] > y0) return true; }
@@ -464,7 +464,7 @@ $("zPan").addEventListener("change", e => { const t = e.target; if (t.dataset.al
 $("fOp").addEventListener("input", e => { UI.op = e.target.value / 100; GL.forEach(x => x.layer.style()); });
 $("fOnly").addEventListener("change", e => { UI.only = e.target.checked; GL.forEach(x => { x.layer.style(); paintZone(x.layer.m); }); });
 $("fSt").addEventListener("click", e => { const b = e.target.closest("[data-s]"); if (!b) return; F.st = b.dataset.s; $("fSt").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b)); draw(); });
-$("fBooked").addEventListener("change", e => { UI.bk = e.target.checked; GL.forEach(x => x.layer.style()); OV.forEach(o => o.layer && (o.layer.cv.style.display = e.target.checked ? "" : "none")); LB.draw(); });
+$("fBooked").addEventListener("change", e => { UI.bk = e.target.checked; GL.forEach(x => { x.layer.style(); paintZone(x.layer.m); }); OV.forEach(o => o.layer && (o.layer.cv.style.display = e.target.checked ? "" : "none")); LB.draw(); });
 $("fFull").addEventListener("click", () => { const d = document; if (!d.fullscreenElement) { (d.documentElement.requestFullscreen || d.documentElement.webkitRequestFullscreen || (() => {})).call(d.documentElement); d.body.classList.add("full"); } else { d.exitFullscreen(); } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement) document.body.classList.remove("full"); setTimeout(() => map.invalidateSize(), 200); });
 // downloads: the chosen zones (or the one in view) as full live maps — booked plots coloured, live numbers
@@ -477,16 +477,16 @@ function save(blob, name){ const a = document.createElement("a"); a.download = n
 function busy(on, msg){ let d = $("dlw"); if (on){ if (!d){ d = document.createElement("div"); d.id = "dlw"; d.className = "dlwait"; document.body.appendChild(d); } d.textContent = msg || "جاري التجهيز…"; } else if (d) d.remove(); }
 async function dlZone(m, kind){ return kind === "pdf" ? dlPdf([m]) : dlPng([m]); }
 async function dlPng(ms){ if (!ms.length) return alert("اختار منطقة من الفلتر أو قرّب عليها الأول");
-  try { for (const [k, m] of ms.entries()){ busy(true, `جاري تجهيز الصورة ${k + 1} من ${ms.length}…`); const R = await AGMaps.renderFull(m.i, UI.only);
+  try { for (const [k, m] of ms.entries()){ busy(true, `جاري تجهيز الصورة ${k + 1} من ${ms.length}…`); const R = await AGMaps.renderFull(m.i, UI.only, !UI.bk);
     save(await new Promise(r => R.canvas.toBlob(r, "image/png")), fname(m) + ".png"); } } finally { busy(false); } }
 let jspdfP = null;
 function jspdf(){ return jspdfP || (jspdfP = new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; sc.onload = () => ok(window.jspdf.jsPDF); sc.onerror = no; document.head.appendChild(sc); })); }
 async function dlPdf(ms){ if (!ms.length) return alert("اختار منطقة من الفلتر أو قرّب عليها الأول");
   try { busy(true, "جاري تجهيز الـ PDF…"); const J = await jspdf(); let doc = null;
-    for (const [k, m] of ms.entries()){ busy(true, `جاري تجهيز صفحة ${k + 1} من ${ms.length}…`); const R = await AGMaps.renderFull(m.i, UI.only), c = R.canvas, land = c.width >= c.height;
+    for (const [k, m] of ms.entries()){ busy(true, `جاري تجهيز صفحة ${k + 1} من ${ms.length}…`); const R = await AGMaps.renderFull(m.i, UI.only, !UI.bk), c = R.canvas, land = c.width >= c.height;
       if (!doc) doc = new J({orientation: land ? "l" : "p", unit: "pt", format: "a4"}); else doc.addPage("a4", land ? "l" : "p");
       const pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), sc = Math.min((pw - 24) / c.width, (ph - 24) / c.height);
-      doc.addImage(c.toDataURL("image/jpeg", .9), "JPEG", (pw - c.width * sc) / 2, (ph - c.height * sc) / 2, c.width * sc, c.height * sc); }
+      doc.addImage(c.toDataURL("image/jpeg", .95), "JPEG", (pw - c.width * sc) / 2, (ph - c.height * sc) / 2, c.width * sc, c.height * sc); }
     save(doc.output("blob"), (ms.length === 1 ? fname(ms[0]) : (F.city || "خرائط المرحلة 11") + " - " + ms.length + " مناطق") + ".pdf");
   } catch (e) { alert("حصلت مشكلة في تجهيز الملف، جرّب تاني"); console.warn(e); } finally { busy(false); } }
 $("fPng").addEventListener("click", () => dlPng(dlTargets()));
