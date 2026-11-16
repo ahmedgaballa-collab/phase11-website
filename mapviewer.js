@@ -44,7 +44,6 @@
     ".agmv-layer canvas{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
     ".agmv-st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#F5F1E7;background:rgba(255,255,255,.08);border-radius:999px;padding:4px 10px}" +
     ".agmv-st i{width:13px;height:13px;border-radius:3px;background:#C8282C;display:inline-block;border:1px solid #fff}" +
-    ".agmv.hide-res .agmv-layer canvas{display:none}" +
     ".agmv-lbl{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}" +
     ".agmv-nc{position:absolute;top:12px;left:12px;width:46px;height:46px;pointer-events:none;z-index:3;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}.agmv-nc svg{width:100%;height:100%;transition:transform .3s}" +
     ".agmv-bot{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom));background:rgba(6,12,24,.6);flex-wrap:wrap}" +
@@ -88,7 +87,7 @@
       else if (a === "in") zoomAt(1.6, stage.clientWidth / 2, stage.clientHeight / 2);
       else if (a === "out") zoomAt(1 / 1.6, stage.clientWidth / 2, stage.clientHeight / 2);
       else if (a === "fit") fit();
-      else if (a === "res") { var h = root.classList.toggle("hide-res"); resB.textContent = h ? "إظهار المحجوز" : "إخفاء المحجوز"; drawLabels(); }
+      else if (a === "res") { var h = root.classList.toggle("hide-res"); resB.textContent = h ? "إظهار المحجوز" : "إخفاء المحجوز"; paintCur(); }
     });
     stage.addEventListener("wheel", function (e) {
       e.preventDefault(); var r = stage.getBoundingClientRect();
@@ -418,7 +417,7 @@
     var dpr = window.devicePixelRatio || 1, cw = stage.clientWidth, ch = stage.clientHeight;
     if (lbl.width !== Math.round(cw * dpr) || lbl.height !== Math.round(ch * dpr)) { lbl.width = Math.round(cw * dpr); lbl.height = Math.round(ch * dpr); }
     var c = lbl.getContext("2d"); c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, lbl.width, lbl.height);
-    if (root.classList.contains("hide-res") || !LBL.length) return;
+    if (!LBL.length) return;
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.textAlign = "center"; c.textBaseline = "middle";
     for (var i = 0; i < LBL.length; i++) { var L = LBL[i], f = L.f * s; if (f < 2.2) continue;
       var x = tx + L.x * s, y = ty + L.y * s, m = f * 3; if (x < -m || y < -m || x > cw + m || y > ch + m) continue;
@@ -428,15 +427,24 @@
       c.fillStyle = L.b ? "#fff" : "#16325C"; c.font = "bold " + (f * .78).toFixed(2) + "px Helvetica, Arial, sans-serif"; c.fillText(L.t[2], 0, f * .95);
       c.restore(); }
   }
+  // the plots are always redrawn sharp over the (lower-res) sheet; "hide booked" just paints every plot in the map's own colour
+  var cur = null;
+  function paintCur() {
+    if (!cur || list[pos] !== cur.it) return 0;
+    var it = cur.it, st = root.classList.contains("hide-res") ? { booked: function () { return false; }, info: cur.st.info } : cur.st;
+    svg.width = it.w; svg.height = it.h; var cx = svg.getContext("2d"); cx.clearRect(0, 0, it.w, it.h);
+    LBL = paintVec(cx, it, cur.V, st, 1).labs; drawLabels();
+    var n = 0; it.plots.forEach(function (p) { if (cur.st.booked(p)) n++; }); return n;
+  }
   function drawReserved(it, fresh) {
-    if (!fresh) { svg.width = 1; svg.height = 1; LBL = []; drawLabels(); stEl.hidden = true; resB.hidden = true; }
+    if (!fresh) { cur = null; svg.width = 1; svg.height = 1; LBL = []; drawLabels(); stEl.hidden = true; resB.hidden = true; }
     clearInterval(resTimer);
     if (!it.plots || !it.plots.length) return;
     // keep the map live while it's open: re-check every 2 minutes
     resTimer = setInterval(function () { if (list[pos] === it && root.style.display !== "none") { delete cityData[it.city]; drawReserved(it, true); } else clearInterval(resTimer); }, 120000);
     Promise.all([loadStatus(it), loadVec(it)]).then(function (v) {
       if (list[pos] !== it) return;
-      if (v[1]) { svg.width = it.w; svg.height = it.h; var cx = svg.getContext("2d"); cx.clearRect(0, 0, it.w, it.h); var R = paintVec(cx, it, v[1], v[0], 1); LBL = R.labs; drawLabels(); return R.n; }
+      if (v[1]) { cur = { it: it, V: v[1], st: v[0] }; return paintCur(); }
       return fullImg(it.file).then(function (im) { return list[pos] === it ? paintMap(it, im, v[0]) : null; });
     }).then(function (n) {
       if (n == null || list[pos] !== it) return;
