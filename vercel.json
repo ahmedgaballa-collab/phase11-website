@@ -23,6 +23,10 @@
     {
       "source": "/links",
       "destination": "/links.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/faq.html"
     }
   ],
   "headers": [
