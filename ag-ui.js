@@ -21,6 +21,14 @@
     "@media print{.ag-wa{display:none}}";
   document.head.appendChild(css);
 
+  // FAQ tab on every page's menu (2026-11-18)
+  document.querySelectorAll(".nav, .site-nav").forEach(function (nav) {
+    if (nav.querySelector('a[href^="/faq"]')) return;
+    var l = document.createElement("a");
+    l.href = "/faq.html"; l.textContent = "الأسئلة";
+    nav.appendChild(l);
+  });
+
   // short label on phones so all five tabs fit
   var mq = window.matchMedia("(max-width:560px)");
   function labels() {
@@ -35,7 +43,7 @@
   if (mq.addEventListener) mq.addEventListener("change", labels);
 
   // floating WhatsApp (skip pages that already have one)
-  if (document.querySelector(".wa-float")) return;
+  if (document.querySelector(".wa-float") || document.body.hasAttribute("data-no-wa")) return;
   var a = document.createElement("a");
   a.className = "ag-wa";
   a.href = "https://wa.me/" + PHONE + "?text=" + encodeURIComponent(MSG);
