@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://www.ahmedgaballah.net/</loc><lastmod>2026-11-19</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://www.ahmedgaballah.net/search</loc><lastmod>2026-11-19</lastmod><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.ahmedgaballah.net/dashboard</loc><lastmod>2026-11-19</lastmod><changefreq>hourly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://www.ahmedgaballah.net/maps</loc><lastmod>2026-11-19</lastmod><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.ahmedgaballah.net/sat</loc><lastmod>2026-11-19</lastmod><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.ahmedgaballah.net/faq.html</loc><lastmod>2026-11-19</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.ahmedgaballah.net/about</loc><lastmod>2026-11-19</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+</urlset>
