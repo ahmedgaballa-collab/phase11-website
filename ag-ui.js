@@ -9,8 +9,10 @@
   css.textContent =
     "@media (max-width:560px){" +
     ".nav,.site-nav{gap:2px!important;padding:3px!important}" +
-    ".nav a,.site-nav a{flex:1 1 auto!important;padding:7px 6px!important;font-size:12.5px!important;text-align:center}" +
+    ".nav a,.site-nav a{flex:1 1 auto!important;padding:7px 4px!important;font-size:12px!important;text-align:center}" +
     "}" +
+    ".nav a.ag-sell-tab,.site-nav a.ag-sell-tab{background:var(--gold,#B8912F)!important;color:#fff!important;font-weight:800!important}" +
+    ".nav a.ag-sell-tab.on,.site-nav a.ag-sell-tab.on{background:var(--ink,#0B1F3F)!important}" +
     ".ag-wa{position:fixed;bottom:18px;left:18px;z-index:40;width:56px;height:56px;border-radius:50%;" +
     "background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;" +
     "box-shadow:0 8px 22px rgba(0,0,0,.28);text-decoration:none;transition:bottom .2s,transform .15s}" +
@@ -29,6 +31,14 @@
     nav.appendChild(l);
   });
 
+  // "sell your plot" tab, gold, at the end of every menu (2026-11-19)
+  document.querySelectorAll(".nav, .site-nav").forEach(function (nav) {
+    var l = nav.querySelector('a[href^="/offer"]');
+    if (!l) { l = document.createElement("a"); l.href = "/offer.html"; nav.appendChild(l); }
+    l.classList.add("ag-sell-tab"); l.dataset.full = "بيع قطعتك 🔒"; l.dataset.short = "بيع 🔒";
+    if (/\/offer(\.html)?$/.test(location.pathname)) l.classList.add("on");
+  });
+
   // short label on phones so all five tabs fit
   var mq = window.matchMedia("(max-width:560px)");
   function labels() {
@@ -36,6 +46,7 @@
       if (!a.dataset.full) a.dataset.full = a.textContent;
       a.textContent = mq.matches ? "البحث" : a.dataset.full;
     });
+    document.querySelectorAll(".ag-sell-tab").forEach(function (l) { l.textContent = mq.matches ? l.dataset.short : l.dataset.full; });
     var on = document.querySelector(".nav a.on, .site-nav a.on");
     if (on && on.scrollIntoView) try { on.scrollIntoView({ block: "nearest", inline: "center" }); } catch (e) {}
   }
@@ -134,8 +145,21 @@
     var s = document.createElement("style");
     s.textContent = ".ag-rights{width:100%;flex-basis:100%;text-align:center;font-size:12px;line-height:1.7;opacity:.75;" +
       "padding:10px 16px 14px;border-top:1px solid rgba(127,127,127,.18);margin-top:6px}" +
-      "@media (max-width:700px){.ag-rights{padding-bottom:84px}}";
+      "@media (max-width:700px){.ag-rights{padding-bottom:84px}}" +
+      ".ag-sell{display:flex;align-items:center;gap:12px;max-width:1180px;margin:16px auto 4px;padding:14px 18px;border-radius:14px;" +
+      "background:var(--gold-soft,#F7F0DE);border:1px solid var(--gold,#B8912F);color:var(--ink,#0B1F3F);text-decoration:none;box-sizing:border-box;width:calc(100% - 32px)}" +
+      ".ag-sell>span:first-child{font-size:22px}.ag-sell b{display:block;font-size:15.5px;font-weight:900}" +
+      ".ag-sell small{display:block;font-size:13px;opacity:.8}.ag-sell em{font-style:normal;margin-inline-start:auto;font-weight:900;white-space:nowrap;" +
+      "background:var(--ink,#0B1F3F);color:var(--surface,#fff);border-radius:999px;padding:8px 16px;font-size:14px}" +
+      "@media (max-width:560px){.ag-sell{flex-wrap:wrap}.ag-sell em{margin-inline-start:0;width:100%;text-align:center}}";
     document.head.appendChild(s);
+    // "sell your plot" strip on every page except the offer page itself (2026-11-19)
+    if (!/\/offer(\.html)?$/.test(location.pathname)) {
+      var o = document.createElement("a");
+      o.className = "ag-sell"; o.href = "/offer.html";
+      o.innerHTML = "<span>🔒</span><span><b>عندك قطعة عايز تبيعها؟</b><small>اعرضها بسرية — رقمك ومكان قطعتك مش هيتنشروا</small></span><em>اعرض قطعتك ←</em>";
+      if (f) f.insertBefore(o, f.firstChild); else document.body.appendChild(o);
+    }
     if (f) f.appendChild(d); else document.body.appendChild(d);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", add); else add();
