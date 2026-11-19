@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>اعرض أرضك بسرية | أحمد جاب الله — المرحلة 11</title>
+<meta name="description" content="عندك قطعة في المرحلة 11 عايز تبيعها؟ اعرضها بسرية تامة — بيانات قطعتك مش بتتنشر، وأحمد جاب الله بس اللي بيشوفها.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="logo.png">
+<script>
+(function(){var t="light";try{t=localStorage.getItem("ag-theme")==="dark"?"dark":"light";}catch(e){}
+document.documentElement.setAttribute("data-theme",t);})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root, :root[data-theme="light"]{
+  --bg:#F4F6F9; --surface:#FFFFFF; --surface-2:#F8FAFC; --ink:#0B1F3F; --ink-2:#4A5873; --ink-3:#7D889C;
+  --line:#E3E8EF; --track:#EDF1F6; --gold:#B8912F; --gold-ink:#8F6E1F; --gold-soft:#F7F0DE;
+  --booked:#0B1F3F; --good:#1F8A4C; --good-soft:#E6F4EC; --bad:#A23B3B; --bad-soft:#F8E9E9;
+  --shadow:0 1px 2px rgba(11,31,63,.04), 0 8px 24px -12px rgba(11,31,63,.12);
+  --radius:16px;
+}
+:root[data-theme="dark"]{
+  --bg:#0A1120; --surface:#111B30; --surface-2:#0E172A; --ink:#F5F1E7; --ink-2:#B7C2D9; --ink-3:#7E8CA8;
+  --line:#243452; --track:#1B2740; --gold:#C9A44C; --gold-ink:#E8CC85; --gold-soft:#2A2616;
+  --booked:#C9A44C; --good:#7FAE83; --good-soft:#1B2A22; --bad:#E08A8A; --bad-soft:#2E1B1F;
+  --shadow:0 1px 2px rgba(0,0,0,.2), 0 10px 30px -14px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Tajawal',system-ui,sans-serif;font-size:15px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+
+/* header */
+.topbar{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:saturate(1.4) blur(10px);-webkit-backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:68px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;min-width:0}
+.brand img{height:42px;width:42px;object-fit:contain;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:3px}
+.brand b{display:block;font-size:16px;font-weight:800;line-height:1.2;white-space:nowrap}
+.brand small{display:block;color:var(--ink-3);font-size:12px;white-space:nowrap}
+.nav{display:flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px;margin-inline-start:12px}
+.nav a{font-size:13.5px;text-decoration:none;color:var(--ink-2);padding:6px 14px;border-radius:999px;white-space:nowrap;font-weight:500}
+.nav a.on{background:var(--ink);color:var(--surface);font-weight:700}
+.top-actions{margin-inline-start:auto;display:flex;align-items:center;gap:8px}
+.live{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:none}
+.dot.on{background:#22A45D;animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(34,164,93,.45)}70%{box-shadow:0 0 0 7px rgba(34,164,93,0)}100%{box-shadow:0 0 0 0 rgba(34,164,93,0)}}
+.icon-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  cursor:pointer;display:grid;place-items:center;font-size:16px;flex:none}
+.icon-btn:hover{border-color:var(--gold)}
+.tg-btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:999px;background:#229ED9;color:#fff;
+  text-decoration:none;font-weight:700;font-size:13.5px;white-space:nowrap}
+.tg-btn svg{width:17px;height:17px}
+.tg-btn:hover{filter:brightness(1.08)}
+
+
+main{padding:24px 16px 10px}
+.box{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.hero{padding:24px 24px 20px}
+.hero .lock{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:var(--ink);color:var(--surface);font-size:24px;margin-bottom:12px}
+.hero h1{margin:0 0 6px;font-size:26px;font-weight:900;line-height:1.3}
+.hero p{margin:0;color:var(--ink-2);font-size:15.5px;line-height:1.8}
+.trust{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
+.trust li{display:flex;gap:10px;align-items:flex-start;font-size:14.5px;line-height:1.6}
+.trust li .ck{color:var(--good);font-weight:900;flex:none}
+form.card{padding:22px 24px;display:flex;flex-direction:column;gap:16px}
+.step{display:flex;flex-direction:column;gap:8px}
+.step>label,.lbl{font-weight:800;font-size:15px;display:flex;gap:8px;align-items:center}
+.num{width:24px;height:24px;border-radius:50%;background:var(--gold-soft);color:var(--gold-ink);display:grid;place-items:center;font-size:13px;font-weight:900;flex:none}
+select,input[type=text],input[type=tel],input[type=number]{width:100%;height:48px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:16px;padding:0 14px;outline:none}
+select:focus,input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{color:var(--ink-3);font-size:13px}
+.plot{display:none;border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--surface-2)}
+.plot.ok{display:block;border-color:var(--good);background:var(--good-soft)}
+.plot.bad{display:block;border-color:var(--bad);background:var(--bad-soft);color:var(--bad);font-weight:700}
+.plot .t{font-weight:900;margin-bottom:6px}
+.plot .g{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14.5px;color:var(--ink-2)}
+.plot .g b{color:var(--ink)}
+.money{display:flex;gap:8px}
+.money input{flex:1}
+.cur{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;flex:none}
+.cur button{border:0;background:var(--surface-2);color:var(--ink-2);font:inherit;font-weight:800;padding:0 14px;cursor:pointer}
+.cur button.on{background:var(--ink);color:var(--surface)}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.7;color:var(--ink-2);background:var(--gold-soft);border-radius:12px;padding:12px 14px}
+.consent input{width:20px;height:20px;margin-top:3px;flex:none;accent-color:var(--ink)}
+.send{height:52px;border:0;border-radius:14px;background:var(--ink);color:var(--surface);font:inherit;font-size:17px;font-weight:900;cursor:pointer}
+.send:disabled{opacity:.5;cursor:not-allowed}
+.err{display:none;color:var(--bad);font-weight:700;font-size:14.5px}
+.done{display:none;padding:30px 24px;text-align:center}
+.done .big{font-size:46px}
+.done h2{margin:6px 0;font-size:22px;font-weight:900}
+.done p{color:var(--ink-2);margin:0 0 14px}
+input.hp{position:absolute;left:0;top:0;width:1px!important;height:1px!important;padding:0!important;border:0!important;overflow:hidden;clip:rect(0 0 0 0);opacity:0;pointer-events:none}
+.privacy-link{color:var(--ink);font-weight:700}
+@media (max-width:560px){.hero h1{font-size:22px}.row2{grid-template-columns:1fr}form.card,.hero{padding:18px}}
+footer{border-top:1px solid var(--line);background:var(--surface);margin-top:28px}
+footer .wrap{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:20px 16px;color:var(--ink-2);font-size:13.5px}
+footer img{height:34px}
+footer .cta{margin-inline-start:auto;display:flex;gap:8px;flex-wrap:wrap}
+footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-weight:700;font-size:13.5px}
+.btn-wa{background:#25A05B;color:#fff}
+.btn-call{border:1px solid var(--line);color:var(--ink)}
+
+
+@media (max-width:900px){
+  .topbar .wrap{flex-wrap:wrap;height:auto;padding-top:10px;padding-bottom:10px;row-gap:10px}
+  .nav{order:3;width:100%;margin:0;display:flex}
+  .nav a{flex:1;text-align:center;padding:8px 4px}
+  .tg-btn span{display:none} .tg-btn{padding:0 11px}
+}
+@media (max-width:620px){
+  .brand small{display:none}
+  .me{grid-template-columns:1fr;text-align:center;justify-items:center;padding:22px 18px}
+  .me h1{font-size:24px}
+  .sec{padding:20px 18px}
+  .list{grid-template-columns:1fr}
+  .cta{padding:20px 18px}
+  .btn{flex:1;justify-content:center}
+  footer .cta{margin-inline-start:0}
+}
+.nav{overflow-x:auto;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}
+@media (max-width:900px){.nav a{flex:1 0 auto;padding:8px 12px}}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <a class="brand" href="/"><img src="logo.png" alt="AG"><span><b>أحمد جاب الله</b><small>مستشارك العقاري — المرحلة 11</small></span></a>
+  <nav class="nav"><a href="/">الرئيسية</a><a href="/search">ابحث عن قطعتك</a><a href="/dashboard">الحجوزات</a><a href="/maps">الخرائط</a><a href="/about">عنّي</a><a href="/faq.html">الأسئلة</a></nav>
+  <div class="top-actions">
+    <a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener" title="قناة التليجرام"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a>
+    <button class="icon-btn" id="themeBtn" type="button" aria-label="الوضع الفاتح / الغامق"></button>
+  </div>
+</div></header>
+
+<main><div class="box">
+  <section class="card hero">
+    <div class="lock">🔒</div>
+    <h1>عندك قطعة عايز تبيعها؟ اعرضها بسرية</h1>
+    <p>اختار قطعتك، واكتب الأوفر اللي عايزه ورقمك — وأنا هتواصل معاك على الخاص. كل بيانات القطعة (المساحة والمقدم) عندي، مش محتاج تكتب حاجة تانية.</p>
+    <ul class="trust">
+      <li><span class="ck">✔</span><span>بيانات قطعتك ورقمك <b>مش بتتنشر في أي مكان</b> — لا على الموقع ولا على القناة.</span></li>
+      <li><span class="ck">✔</span><span>أحمد جاب الله بس اللي بيشوفها.</span></li>
+      <li><span class="ck">✔</span><span>مش هعرض قطعتك على أي حد من غير ما أرجعلك الأول.</span></li>
+    </ul>
+  </section>
+
+  <form class="card" id="f" novalidate autocomplete="off">
+    <div class="step"><label for="city"><span class="num">1</span>المدينة والمنطقة</label>
+      <div class="row2">
+        <select id="city" required><option value="">جاري التحميل…</option></select>
+        <select id="zone" required disabled><option value="">اختار المدينة الأول</option></select>
+      </div>
+    </div>
+
+    <div class="step"><label for="block"><span class="num">2</span>المربع ورقم القطعة</label>
+      <div class="row2">
+        <select id="block" disabled><option value="">المربع</option></select>
+        <input type="text" id="plot" inputmode="numeric" placeholder="رقم القطعة" disabled>
+      </div>
+      <div class="plot" id="card"></div>
+    </div>
+
+    <div class="step"><label for="over"><span class="num">3</span>الأوفر المطلوب</label>
+      <div class="money">
+        <input type="text" id="over" inputmode="numeric" placeholder="مثلاً 400,000">
+        <div class="cur" id="cur"><button type="button" data-c="EGP" class="on">جنيه</button><button type="button" data-c="USD">دولار</button></div>
+      </div>
+    </div>
+
+    <div class="step"><label for="phone"><span class="num">4</span>رقمك للتواصل</label>
+      <div class="row2">
+        <input type="tel" id="phone" inputmode="tel" placeholder="رقم الموبايل / الواتساب" dir="ltr" style="text-align:right">
+        <input type="text" id="name" placeholder="الاسم (اختياري)">
+      </div>
+    </div>
+
+    <input class="hp" type="text" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+    <label class="consent"><input type="checkbox" id="consent">
+      <span>موافق إن أحمد جاب الله يحتفظ ببيانات القطعة ورقمي ويتواصل معايا بخصوص بيعها، وإن بياناتي <b>مش هتتنشر ولا هتتشارك</b> مع أي حد من غير إذني. <a class="privacy-link" href="/privacy.html" target="_blank">سياسة الخصوصية</a></span>
+    </label>
+
+    <div class="err" id="err"></div>
+    <button class="send" id="send" type="submit" disabled>ابعت العرض بسرية 🔒</button>
+  </form>
+
+  <section class="card done" id="done">
+    <div class="big">✅</div>
+    <h2>وصلني عرضك</h2>
+    <p>هتواصل معاك على الخاص في أقرب وقت. بيانات قطعتك محفوظة ومش بتتنشر.</p>
+    <a class="btn wa" href="https://wa.me/201009566779" target="_blank" rel="noopener" style="display:inline-flex;background:#25A05B;color:#fff;height:46px;align-items:center;padding:0 20px;border-radius:999px;font-weight:800;text-decoration:none">لو مستعجل — كلمني واتساب</a>
+  </section>
+</div></main>
+
+<footer><div class="wrap">
+  <img src="logo.png" alt="AG">
+  <div><b>أحمد جاب الله</b> — مستشار عقاري<br><small style="color:var(--ink-3)">البيانات محدّثة تلقائيًا على مدار اليوم.</small></div>
+  <div class="cta"><a class="tg-btn" href="https://t.me/BEITALWATANAG" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.9 4.3 18.8 19c-.2 1-.8 1.3-1.7.8l-4.6-3.4-2.2 2.1c-.3.3-.5.5-1 .5l.3-4.7 8.6-7.8c.4-.3-.1-.5-.6-.2L6.9 13 2.4 11.6c-1-.3-1-1 .2-1.4L20.6 3.2c.8-.3 1.6.2 1.3 1.1z"/></svg><span>قناة التليجرام</span></a><a class="btn-wa" href="https://wa.me/201009566779" target="_blank" rel="noopener">واتساب</a><a class="btn-call" href="tel:01009566779">01009566779</a></div>
+</div></footer>
+<script>
+const $ = id => document.getElementById(id);
+const SB = "https://data.ahmedgaballah.net/rest/v1/";
+const T0 = Date.now();
+const get = p => fetch(SB + p, { cache: "no-store" }).then(r => { if (!r.ok) throw r.status; return r.json(); });
+const AR = { "٠":0,"١":1,"٢":2,"٣":3,"٤":4,"٥":5,"٦":6,"٧":7,"٨":8,"٩":9 };
+const en = s => String(s || "").replace(/[٠-٩]/g, d => AR[d]);
+const fmt = n => Number(n).toLocaleString("en-US", { maximumFractionDigits: 0 });
+const opt = (v, t) => { const o = document.createElement("option"); o.value = v; o.textContent = t; return o; };
+let ZONES = [], found = null, currency = "EGP";
+
+(async function init() {
+  try {
+    ZONES = await get("v_stats_by_zone?select=zone_id,city,project,zone_name&order=city,project");
+    const cities = [...new Set(ZONES.map(z => z.city))].sort((a, b) => a.localeCompare(b, "ar"));
+    const c = $("city"); c.innerHTML = ""; c.append(opt("", "اختار المدينة"));
+    cities.forEach(x => c.append(opt(x, x)));
+  } catch (e) { $("city").innerHTML = '<option value="">مقدرناش نحمّل المدن — حدّث الصفحة</option>'; }
+})();
+
+$("city").addEventListener("change", () => {
+  const z = $("zone"); z.innerHTML = ""; reset(true);
+  const list = ZONES.filter(x => x.city === $("city").value);
+  z.disabled = !list.length;
+  z.append(opt("", list.length ? "اختار المنطقة" : "اختار المدينة الأول"));
+  list.forEach(x => z.append(opt(x.zone_id, x.zone_name && x.zone_name !== x.project ? x.project + " — " + x.zone_name : (x.zone_name || x.project))));
+  if (list.length === 1) { z.value = list[0].zone_id; z.dispatchEvent(new Event("change")); }
+});
+
+$("zone").addEventListener("change", async () => {
+  reset(true);
+  const b = $("block"); b.innerHTML = ""; b.append(opt("", "جاري التحميل…")); b.disabled = true;
+  if (!$("zone").value) return;
+  try {
+    const rows = await get(`plots?select=block&zone_id=eq.${$("zone").value}&is_active=eq.true&limit=5000`);
+    const blocks = [...new Set(rows.map(r => r.block || ""))].sort((a, c) => a.localeCompare(c, "ar", { numeric: true }));
+    b.innerHTML = ""; b.append(opt("", "المربع"));
+    blocks.forEach(x => b.append(opt(x, x || "—")));
+    b.disabled = false; $("plot").disabled = false;
+    if (blocks.length === 1) b.value = blocks[0];
+  } catch (e) { b.innerHTML = '<option value="">حصلت مشكلة — جرّب تاني</option>'; }
+});
+
+let timer;
+["block", "plot"].forEach(id => $(id).addEventListener(id === "plot" ? "input" : "change", () => { clearTimeout(timer); timer = setTimeout(lookup, 450); }));
+
+async function lookup() {
+  found = null; check();
+  const plot = en($("plot").value).trim(), card = $("card");
+  if (!plot || !$("zone").value) { card.className = "plot"; return; }
+  try {
+    let q = `plots?select=block,plot_number,area_sqm,down_payment,corner,garden,view&zone_id=eq.${$("zone").value}&plot_number=eq.${encodeURIComponent(plot)}&is_active=eq.true&limit=2`;
+    if ($("block").value) q += `&block=eq.${encodeURIComponent($("block").value)}`;
+    const r = await get(q);
+    if (r.length === 1) {
+      found = r[0];
+      const f = [found.corner && "🔺 ناصية", found.garden && "🌳 حديقة", found.view && "🌊 إطلالة"].filter(Boolean).join(" · ");
+      card.className = "plot ok";
+      card.innerHTML = `<div class="t">✅ دي قطعتك؟</div><div class="g"><span>المربع: <b>${found.block || "—"}</b></span><span>القطعة: <b>${found.plot_number}</b></span><span>المساحة: <b>${fmt(found.area_sqm)} م²</b></span><span>المقدم: <b>$${fmt(found.down_payment)}</b></span>${f ? `<span>${f}</span>` : ""}</div>`;
+      if (!$("block").value) $("block").value = found.block || "";
+    } else if (r.length > 1) {
+      card.className = "plot bad"; card.textContent = "فيه أكتر من قطعة بالرقم ده — اختار المربع.";
+    } else {
+      card.className = "plot bad"; card.textContent = "مش لاقيين القطعة دي — راجع المربع ورقم القطعة.";
+    }
+  } catch (e) { card.className = "plot bad"; card.textContent = "حصلت مشكلة في التحميل — جرّب تاني."; }
+  check();
+}
+
+function reset(clearPlot) { found = null; $("card").className = "plot"; if (clearPlot) { $("plot").value = ""; $("plot").disabled = true; } check(); }
+
+$("cur").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  currency = b.dataset.c; [...$("cur").children].forEach(x => x.classList.toggle("on", x === b));
+});
+$("over").addEventListener("input", () => {
+  const n = en($("over").value).replace(/[^\d]/g, "");
+  $("over").value = n ? Number(n).toLocaleString("en-US") : ""; check();
+});
+["phone", "consent"].forEach(id => $(id).addEventListener("input", check));
+$("consent").addEventListener("change", check);
+
+function phoneOk() {
+  let p = en($("phone").value).replace(/[\s\-().]/g, "");
+  if (/^(\+|00)20/.test(p)) p = "0" + p.replace(/^(\+|00)20/, "");
+  return /^01[0125]\d{8}$/.test(p) || /^(\+|00)\d{8,15}$/.test(p);
+}
+function check() {
+  const over = Number(en($("over").value).replace(/[^\d]/g, ""));
+  $("send").disabled = !(found && over > 0 && phoneOk() && $("consent").checked);
+}
+
+$("f").addEventListener("submit", async e => {
+  e.preventDefault(); if ($("send").disabled) return;
+  $("send").disabled = true; $("send").textContent = "جاري الإرسال…"; $("err").style.display = "none";
+  try {
+    // bots: hidden field filled, or the form sent within 3 s of opening -> pretend it worked
+    if ($("website").value || Date.now() - T0 < 3000) { $("f").style.display = "none"; $("done").style.display = "block"; return; }
+    const r = await fetch(SB + "rpc/submit_offer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      p_zone_id: Number($("zone").value), p_block: found.block || "", p_plot: String(found.plot_number),
+      p_overprice: Number(en($("over").value).replace(/[^\d]/g, "")), p_currency: currency,
+      p_phone: $("phone").value, p_name: $("name").value, p_consent: $("consent").checked }) });
+    const j = await r.json().catch(() => ({}));
+    if (r.ok && j.ok) { $("f").style.display = "none"; $("done").style.display = "block"; window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+    throw new Error(j.error || "حصلت مشكلة — جرّب تاني");
+  } catch (err) {
+    $("err").textContent = err.message || "حصلت مشكلة — جرّب تاني أو كلمني واتساب"; $("err").style.display = "block";
+    $("send").textContent = "ابعت العرض بسرية 🔒"; check();
+  }
+});
+
+/* theme */
+function paintThemeBtn(){
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  $("themeBtn").textContent = dark ? "☀" : "☾"; $("themeBtn").title = dark ? "الوضع الفاتح" : "الوضع الغامق";
+}
+$("themeBtn").addEventListener("click", () => {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("ag-theme", next); } catch (e) {}
+  paintThemeBtn();
+});
+paintThemeBtn();
+</script>
+<script src="/ag-ui.js?v=1" defer></script>
+</body>
+</html>
