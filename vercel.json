@@ -53,5 +53,12 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/maps-pdf",
+      "destination": "https://drive.google.com/drive/folders/1YXHYH7l9Y3hOJUxQE_lUrS1dIEpOobB3?usp=sharing",
+      "permanent": false
+    }
   ]
 }
