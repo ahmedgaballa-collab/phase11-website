@@ -12,6 +12,7 @@
     ".nav a,.site-nav a{flex:1 1 auto!important;padding:7px 4px!important;font-size:12px!important;text-align:center}" +
     "}" +
     ".nav a.ag-sell-tab,.site-nav a.ag-sell-tab{background:var(--gold,#B8912F)!important;color:#fff!important;font-weight:800!important}" +
+    "@media (min-width:561px){.nav a.ag-sell-tab,.site-nav a.ag-sell-tab{padding-inline:11px!important}}" +
     ".nav a.ag-sell-tab.on,.site-nav a.ag-sell-tab.on{background:var(--ink,#0B1F3F)!important}" +
     ".ag-wa{position:fixed;bottom:18px;left:18px;z-index:40;width:56px;height:56px;border-radius:50%;" +
     "background:#25D366;color:#fff;display:flex;align-items:center;justify-content:center;" +
@@ -35,12 +36,12 @@
   document.querySelectorAll(".nav, .site-nav").forEach(function (nav) {
     var l = nav.querySelector('a[href^="/offer"]');
     if (!l) { l = document.createElement("a"); l.href = "/offer.html"; nav.appendChild(l); }
-    l.classList.add("ag-sell-tab"); l.dataset.full = "بيع قطعتك 🔒"; l.dataset.short = "بيع 🔒";
+    l.classList.add("ag-sell-tab"); l.dataset.full = "💰 بيع قطعتك"; l.dataset.short = "💰 بيع";
     if (/\/offer(\.html)?$/.test(location.pathname)) l.classList.add("on");
   });
 
   // short label on phones so all five tabs fit
-  var mq = window.matchMedia("(max-width:560px)");
+  var mq = window.matchMedia("(max-width:1320px)");
   function labels() {
     document.querySelectorAll('.nav a[href="/search"], .site-nav a[href="/search"]').forEach(function (a) {
       if (!a.dataset.full) a.dataset.full = a.textContent;
@@ -151,14 +152,29 @@
       ".ag-sell>span:first-child{font-size:22px}.ag-sell b{display:block;font-size:15.5px;font-weight:900}" +
       ".ag-sell small{display:block;font-size:13px;opacity:.8}.ag-sell em{font-style:normal;margin-inline-start:auto;font-weight:900;white-space:nowrap;" +
       "background:var(--ink,#0B1F3F);color:var(--surface,#fff);border-radius:999px;padding:8px 16px;font-size:14px}" +
+      ".ag-dsell{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;margin-top:14px;padding:12px 16px;border-radius:14px;text-decoration:none;" +
+      "background:var(--gold-soft,#F7F0DE);border:1px solid var(--gold,#B8912F);color:var(--ink,#0B1F3F)}" +
+      ".ag-dsell b{font-size:15px;font-weight:900}.ag-dsell small{font-size:13px;opacity:.8}" +
+      ".ag-dsell em{font-style:normal;margin-inline-start:auto;font-weight:900;font-size:14px;color:var(--gold-ink,#8a6a1c);white-space:nowrap}" +
       "@media (max-width:560px){.ag-sell{flex-wrap:wrap}.ag-sell em{margin-inline-start:0;width:100%;text-align:center}}";
     document.head.appendChild(s);
     // "sell your plot" strip on every page except the offer page itself (2026-11-19)
-    if (!/\/offer(\.html)?$/.test(location.pathname)) {
+    if (!/\/offer(\.html)?$/.test(location.pathname) && !document.querySelector(".go.sell")) {
       var o = document.createElement("a");
       o.className = "ag-sell"; o.href = "/offer.html";
-      o.innerHTML = "<span>🔒</span><span><b>عندك قطعة عايز تبيعها؟</b><small>اعرضها بسرية — رقمك ومكان قطعتك مش هيتنشروا</small></span><em>اعرض قطعتك ←</em>";
+      o.innerHTML = "<span>💰</span><span><b>عندك قطعة عايز تبيعها؟</b><small>اعرضها بسرية — رقمك ومكان قطعتك مش هيتنشروا</small></span><em>اعرض قطعتك ←</em>";
       if (f) f.insertBefore(o, f.firstChild); else document.body.appendChild(o);
+    }
+
+    // dashboard: "booked a plot and want to sell?" line under the KPIs (2026-11-20)
+    if (/\/dashboard(\.html)?$/.test(location.pathname) && !document.querySelector(".ag-dsell")) {
+      var k = document.querySelector(".grid-kpi");
+      if (k) {
+        var ds = document.createElement("a");
+        ds.className = "ag-dsell"; ds.href = "/offer.html";
+        ds.innerHTML = "<span>💰</span><b>حجزت قطعة وعايز تبيعها؟</b><small>اعرضها بسرية — رقمك ومكان قطعتك مش هيتنشروا</small><em>اعرض قطعتك ←</em>";
+        k.parentNode.insertBefore(ds, k.nextSibling);
+      }
     }
     if (f) f.appendChild(d); else document.body.appendChild(d);
   }

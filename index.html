@@ -92,7 +92,10 @@ main{padding:0 16px 10px}
 .stats .s.today b{color:var(--gold-ink)}
 .stats .s.av b{color:var(--good)}
 .stats .upd{grid-column:1 / -1;font-size:12px;color:var(--ink-3);text-align:center}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
+.go.sell{background:var(--gold-soft);border-color:var(--gold)}
+.go.sell .ic{background:var(--gold);color:#fff}
+@media (max-width:1100px) and (min-width:561px){.cards{grid-template-columns:repeat(2,1fr)!important}}
 .go{display:flex;flex-direction:column;gap:10px;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}
 .go:hover{transform:translateY(-3px);border-color:var(--gold)}
 .go .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:var(--gold-soft);color:var(--gold-ink)}
@@ -171,7 +174,7 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
   <span class="tag">جديد</span>
   <a href="/faq.html#calc">🔢 اعرف مسلسلك هييجي دوره إمتى</a>
   <span class="sep">·</span>
-  <a href="/offer.html">🔒 اعرض قطعتك للبيع بسرية</a>
+  <a href="/offer.html">💰 اعرض قطعتك للبيع بسرية</a>
   <button class="x" id="newbarX" type="button" aria-label="إخفاء">✕</button>
 </div></div>
 <script>
@@ -207,6 +210,8 @@ footer .cta a{text-decoration:none;border-radius:999px;padding:8px 16px;font-wei
       <div class="text"><h3>متابعة الحجوزات</h3><p>الحجوزات يوم بيوم، وأعلى المدن والمناطق حجزاً، ونسب الإقبال، وتنويهات الهيئة أول ما تنزل.</p></div><span class="more">شوف الحجوزات ←</span></a>
     <a class="go" href="/maps"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"/></svg></span>
       <div class="text"><h3>الخرائط</h3><p>خريطة لكل منطقة في كل مدينة، تكبّرها وتحمّلها وتعرف مكان القطعة بالظبط.</p></div><span class="more">افتح الخرائط ←</span></a>
+    <a class="go sell" href="/offer.html"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg></span>
+      <div class="text"><h3>بيع قطعتك</h3><p>عندك قطعة عايز تبيعها؟ اعرضها بسرية، رقمك ومكان قطعتك مش هيتنشروا، وأنا اللي أتواصل معاك.</p></div><span class="more">اعرض قطعتك ←</span></a>
   </section>
 
   <section class="notice" id="notice" hidden>
